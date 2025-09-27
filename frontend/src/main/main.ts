@@ -52,7 +52,7 @@ function createWindow() {
     
     setTimeout(() => {
       if (mainWindow && isAutoHideEnabled) {
-        mainWindow.setPosition(0, -60)
+        animateWindowToPosition(0, -60)
       }
     }, 10000)
   } else {
@@ -95,33 +95,32 @@ function animateWindowToPosition(targetX: number, targetY: number) {
   if (!mainWindow) return
   
   const startPos = mainWindow.getPosition()
-  const startX = startPos[0]
   const startY = startPos[1]
-  
-  const deltaX = targetX - startX
   const deltaY = targetY - startY
   
+  if (Math.abs(deltaY) < 5) {
+    mainWindow.setPosition(targetX, targetY)
+    return
+  }
+  
+  const steps = 10
+  const stepSize = deltaY / steps
   let currentStep = 0
   
   const animate = () => {
-    if (currentStep >= animationSteps || !mainWindow) return
+    if (currentStep >= steps || !mainWindow) return
     
     currentStep++
-    const progress = currentStep / animationSteps
-    
-    const easeOutCubic = 1 - Math.pow(1 - progress, 3)
-    
-    const newX = Math.round(startX + (deltaX * easeOutCubic))
-    const newY = Math.round(startY + (deltaY * easeOutCubic))
+    const newY = Math.round(startY + (stepSize * currentStep))
     
     try {
-      mainWindow.setPosition(newX, newY)
+      mainWindow.setPosition(targetX, newY)
     } catch (error) {
       return
     }
     
-    if (currentStep < animationSteps) {
-      setTimeout(() => animate(), animationDuration / animationSteps)
+    if (currentStep < steps) {
+      setTimeout(() => animate(), 20)
     }
   }
   
@@ -153,7 +152,7 @@ function startAutoHideTimer() {
         if (!isWindowVisible && !showTimeout) {
           showTimeout = setTimeout(() => {
             if (mainWindow && isAutoHideEnabled) {
-              mainWindow.setPosition(0, 0)
+              animateWindowToPosition(0, 0)
               mainWindow.show()
               mainWindow.setSkipTaskbar(false)
               mainWindow.blur()
@@ -176,7 +175,7 @@ function startAutoHideTimer() {
         if (isWindowVisible && !hideTimeout) {
           hideTimeout = setTimeout(() => {
             if (mainWindow && isAutoHideEnabled) {
-              mainWindow.setPosition(0, -60)
+              animateWindowToPosition(0, -60)
             }
             hideTimeout = null
           }, hideCooldown)
