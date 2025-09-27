@@ -331,9 +331,6 @@
         return;
       }
       
-      // Trigger slide animation
-      triggerConfigAnimation();
-      
       let html = '';
       
       // Gesture Labels Section
@@ -519,31 +516,42 @@
       return statuses[gesture] || 'unknown';
     }
     
-    // Load config when window opens
-    if (window.electronAPI) {
-      window.electronAPI.getConfig().then(config => {
-        renderConfig(config);
-      }).catch(error => {
-        console.error('Failed to load config:', error);
-        document.getElementById('configContent').innerHTML = '<div class="error-text">Failed to load configuration</div>';
-      });
+    let currentConfig = null;
+    
+    function configChanged(newConfig) {
+      if (!currentConfig) {
+        return false; // First load, not a change
+      }
       
-      // Check for config changes every 5 seconds
-      setInterval(() => {
-        window.electronAPI.getConfig().then(newConfig => {
-          // Compare with current config to detect changes
-          const currentContent = document.getElementById('configContent').innerHTML;
-          if (currentContent.includes('Current Gesture Actions')) {
-            // Trigger animation to show config was updated
-            triggerConfigAnimation();
-            // Re-render with new config
-            renderConfig(newConfig);
-          }
-        }).catch(error => {
-          console.error('Failed to reload config:', error);
-        });
-      }, 5000);
+      // Compare configs by converting to JSON strings
+      return JSON.stringify(currentConfig) !== JSON.stringify(newConfig);
     }
+    
+    function loadConfig(showNotification = false) {
+      if (window.electronAPI) {
+        window.electronAPI.getConfig().then(config => {
+          const hasChanged = configChanged(config);
+          currentConfig = config;
+          
+          if (hasChanged && showNotification) {
+            triggerConfigAnimation();
+          }
+          
+          renderConfig(config);
+        }).catch(error => {
+          console.error('Failed to load config:', error);
+          document.getElementById('configContent').innerHTML = '<div class="error-text">Failed to load configuration</div>';
+        });
+      }
+    }
+    
+    // Load config when window opens (no notification)
+    loadConfig(false);
+    
+    // Check for config changes every 10 seconds
+    setInterval(() => {
+      loadConfig(true); // Show notification if changed
+    }, 10000);
   </script>
 </body>
 </html>
