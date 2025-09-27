@@ -41,18 +41,28 @@ CALIBRATION_THRESHOLDS = {
 }
 
 class DataLogger:
-    def __init__(self, port, baudrate=115200, output_dir='data/raw'):
+    def __init__(self, port, baudrate=115200, output_dir=None):
         self.port = port
         self.baudrate = baudrate
+
+        # Default to project root data/raw if no path provided
+        if output_dir is None:
+            script_dir = Path(__file__).parent.parent  # Go up from hardware/ to project root
+            output_dir = script_dir / 'data' / 'raw'
+
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         self.serial_conn = None
         self.is_recording = False
         self.data_queue = queue.Queue()
         self.current_label = 'rest'
         self.session_data = []
         self.start_time = None
+        self.gesture_counts = {}
+
+        # Load existing gesture counts
+        self.load_gesture_counter()
         
     def connect(self):
         try:
@@ -196,8 +206,60 @@ class DataLogger:
             f.write(f"Samples: {len(self.session_data)}\n")
             f.write(f"Sample Rate: ~{len(self.session_data)/(time.time() - self.start_time):.1f} Hz\n")
 
+        # Update and display gesture counter
+        self.update_gesture_counter()
+
         return filename
-    
+
+    def update_gesture_counter(self):
+        """Update and display count of recorded gestures"""
+        if not hasattr(self, 'gesture_counts'):
+            self.gesture_counts = {}
+
+        # Count existing files by gesture
+        if self.output_dir.exists():
+            for csv_file in self.output_dir.glob("*.csv"):
+                gesture = csv_file.stem.split('_')[0]  # Get gesture name from filename
+                self.gesture_counts[gesture] = self.gesture_counts.get(gesture, 0) + 1
+
+        # Display current counts
+        print(f"\n📊 Gesture Recording Progress:")
+        print(f"{'='*40}")
+
+        total_files = 0
+        for gesture in sorted(self.gesture_counts.keys()):
+            count = self.gesture_counts[gesture]
+            total_files += count
+            status = "✅" if count >= 5 else "🔄"  # Mark as good if >= 5 examples
+            print(f"  {gesture:<15} | {count:2d} examples {status}")
+
+        print(f"{'='*40}")
+        print(f"📈 Total: {total_files} gesture recordings")
+
+        # Save counter to file for persistence
+        counter_file = self.output_dir / "gesture_counts.json"
+        try:
+            import json
+            with open(counter_file, 'w') as f:
+                json.dump(self.gesture_counts, f, indent=2)
+        except Exception as e:
+            print(f"Could not save counter file: {e}")
+
+        return total_files
+
+    def load_gesture_counter(self):
+        """Load existing gesture counts from file"""
+        counter_file = self.output_dir / "gesture_counts.json"
+        if counter_file.exists():
+            try:
+                import json
+                with open(counter_file, 'r') as f:
+                    self.gesture_counts = json.load(f)
+                print(f"📊 Loaded gesture counts: {len(self.gesture_counts)} gestures tracked")
+            except Exception as e:
+                print(f"Could not load gesture counter: {e}")
+                self.gesture_counts = {}
+
     def record_multiple_sessions(self, session_plan):
         print("\nMulti-Session Recording")
         print("-" * 23)
@@ -308,12 +370,16 @@ class DataLogger:
 
         thresholds_file = self.output_dir / "calibration_thresholds.json"
         if thresholds_file.exists():
-            import json
-            with open(thresholds_file, 'r') as f:
-                loaded_thresholds = json.load(f)
-                CALIBRATION_THRESHOLDS.update(loaded_thresholds)
+            try:
+                import json
+                with open(thresholds_file, 'r') as f:
+                    loaded_thresholds = json.load(f)
+                    CALIBRATION_THRESHOLDS.update(loaded_thresholds)
                 print(f"Loaded calibration thresholds from {thresholds_file}")
                 return True
+            except (json.JSONDecodeError, KeyError) as e:
+                print(f"Warning: Calibration file corrupted ({e}). Please recalibrate.")
+                return False
         else:
             print("No calibration file found. Run calibration first.")
             return False
@@ -426,8 +492,9 @@ def interactive_mode(logger):
         print("  m. Multi-session recording")
         print("  c. Run calibration sequence")
         print("  l. Load existing calibration")
+        print("  p. Show progress (gesture counts)")
 
-        choice = input("\nSelect action to record (1-14, q, m, c, l): ").strip().lower()
+        choice = input("\nSelect action to record (1-14, q, m, c, l, p): ").strip().lower()
 
         if choice == 'q':
             break
@@ -472,6 +539,12 @@ def interactive_mode(logger):
             else:
                 print("Failed to load calibration. Run calibration first.")
 
+        elif choice == 'p':
+            print("\nCurrent gesture recording progress:")
+            print("=" * 40)
+            logger.update_gesture_counter()
+            input("\nPress Enter to continue...")
+
         else:
             try:
                 idx = int(choice) - 1
@@ -493,7 +566,7 @@ def main():
                        help='Action label for this recording')
     parser.add_argument('--duration', type=int, default=None,
                        help='Recording duration in seconds (default: manual stop)')
-    parser.add_argument('--output-dir', type=str, default='data/raw',
+    parser.add_argument('--output-dir', type=str, default=None,
                        help='Output directory for CSV files')
     parser.add_argument('--interactive', '-i', action='store_true',
                        help='Interactive mode with menu')
@@ -534,6 +607,7 @@ def main():
                 print("No serial ports found!")
                 return
 
+    # Use args.output_dir if provided, otherwise default to project root data/raw
     logger = DataLogger(args.port, output_dir=args.output_dir)
 
     if not logger.connect():

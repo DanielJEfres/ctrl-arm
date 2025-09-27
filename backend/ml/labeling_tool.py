@@ -10,21 +10,21 @@ class LabelingTool:
         self.input_file = input_file
         self.output_file = output_file or f"{Path(input_file).stem}_labeled.csv"
 
-                self.gesture_labels = {
-                    '0': 'rest',
-                    '1': 'left_single',
-                    '2': 'right_single',
-                    '3': 'left_double',
-                    '4': 'right_double',
-                    '5': 'left_hold',
-                    '6': 'right_hold',
-                    '7': 'both_flex',
-                    '8': 'left_then_right',
-                    '9': 'right_then_left',
-                    'a': 'left_hard',
-                    'b': 'right_hard',
-                    'c': 'unknown'
-                }
+        self.gesture_labels = {
+            '0': 'rest',
+            '1': 'left_single',
+            '2': 'right_single',
+            '3': 'left_double',
+            '4': 'right_double',
+            '5': 'left_hold',
+            '6': 'right_hold',
+            '7': 'both_flex',
+            '8': 'left_then_right',
+            '9': 'right_then_left',
+            'a': 'left_hard',
+            'b': 'right_hard',
+            'c': 'unknown'
+        }
 
         self.reverse_labels = {v: k for k, v in self.gesture_labels.items()}
 
@@ -141,11 +141,24 @@ class LabelingTool:
             filename = os.path.basename(file_path)
             print(f"processing {filename}")
 
-            # Extract gesture from filename
-            gesture = filename.split('_')[0]
-
-            if gesture not in gesture_map:
-                print(f"  skipping {filename}: unknown gesture '{gesture}'")
+            # Extract gesture from filename - handle multi-word gestures
+            # Remove the _features.csv suffix first
+            base_name = filename.replace('_features.csv', '')
+            
+            # Try to match against known gestures
+            gesture = None
+            for known_gesture in gesture_map.keys():
+                if base_name.startswith(known_gesture + '_'):
+                    gesture = known_gesture
+                    break
+            
+            # Special case for 'all_features.csv'
+            if filename == 'all_features.csv':
+                print(f"  skipping {filename}: combined features file")
+                continue
+                
+            if gesture is None:
+                print(f"  skipping {filename}: unknown gesture pattern")
                 continue
 
             # Load the feature file
