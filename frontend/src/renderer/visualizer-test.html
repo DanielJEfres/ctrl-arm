@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Visualizer Test</title>
+</head>
+<body style="background: red; color: white; font-size: 24px; padding: 20px;">
+  <h1>VISUALIZER WINDOW TEST</h1>
+  <p>If you can see this, the window is working!</p>
+  <button onclick="closeWindow()" style="padding: 10px; font-size: 16px;">Close</button>
+  
+  <script>
+    function closeWindow() {
+      if (window.electronAPI) {
+        window.electronAPI.hideVisualizer()
+      }
+    }
+  </script>
+</body>
+</html>

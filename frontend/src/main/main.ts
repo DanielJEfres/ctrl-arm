@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, screen } from 'electron'
 import { join } from 'path'
 
 let mainWindow: any = null
+let visualizerWindow: any = null
 let backendProcess: any = null
 let hideTimeout: NodeJS.Timeout | null = null
 let showTimeout: NodeJS.Timeout | null = null
@@ -18,13 +19,13 @@ function createWindow() {
   
   mainWindow = new BrowserWindow({
     width: screenWidth,
-    height: 60,
+    height: screen.getPrimaryDisplay().bounds.height,
     minHeight: 60,
-    maxHeight: 60,
+    maxHeight: screen.getPrimaryDisplay().bounds.height,
     x: 0,
     y: 0,
     frame: false,
-    transparent: false,
+    transparent: true,
     alwaysOnTop: true,
     skipTaskbar: false,
     resizable: false,
@@ -38,7 +39,7 @@ function createWindow() {
       preload: join(__dirname, 'preload.js')
     },
     titleBarStyle: 'hidden',
-    backgroundColor: '#cccccc'
+    backgroundColor: 'rgba(0,0,0,0)'
   })
 
   mainWindow.loadURL('http://localhost:5174')
@@ -277,4 +278,81 @@ ipcMain.handle('toggle-auto-hide', () => {
 
 ipcMain.handle('get-auto-hide-status', () => {
   return isAutoHideEnabled
+})
+
+ipcMain.handle('show-visualizer', () => {
+  console.log('show-visualizer IPC handler called')
+  if (visualizerWindow) {
+    console.log('Visualizer window already exists, showing it')
+    visualizerWindow.show()
+    return
+  }
+  
+  console.log('Creating new visualizer window')
+  const primaryDisplay = screen.getPrimaryDisplay()
+  const { height: screenHeight } = primaryDisplay.bounds
+  
+  console.log('Screen height:', screenHeight)
+  console.log('Window position: x=50, y=', Math.floor((screenHeight - 600) / 2))
+  
+  visualizerWindow = new BrowserWindow({
+    width: 420, // Wider to accommodate arrow tab
+    height: 600,
+    x: 50, // Position so arrow tab is visible at x: 0
+    y: Math.floor((screenHeight - 600) / 2), // Vertically centered
+    frame: false, // No frame for clean look
+    transparent: true, // Transparent for glassmorphism effect
+    alwaysOnTop: true,
+    skipTaskbar: true, // Don't show in taskbar
+    resizable: false, // Fixed size
+    movable: false, // Fixed position
+    show: false,
+    focusable: false, // Don't steal focus
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: join(__dirname, 'preload.js')
+    },
+    backgroundColor: 'rgba(0,0,0,0)' // Transparent background
+  })
+  
+  // Show window immediately without loading HTML first
+  visualizerWindow.show()
+  console.log('Visualizer window shown immediately')
+  
+  // Load HTML file properly with cache busting
+  const htmlPath = join(__dirname, '../src/renderer/visualizer.html')
+  console.log('Loading HTML from:', htmlPath)
+  
+  visualizerWindow.loadFile(htmlPath).then(() => {
+    console.log('HTML loaded successfully')
+    // Force reload to get latest changes
+    visualizerWindow.reload()
+  }).catch((error: any) => {
+    console.error('Error loading HTML:', error)
+  })
+  
+  visualizerWindow.on('ready-to-show', () => {
+    console.log('Visualizer window ready to show')
+  })
+  
+  visualizerWindow.on('show', () => {
+    console.log('Visualizer window show event')
+  })
+  
+  visualizerWindow.on('error', (error: any) => {
+    console.error('Visualizer window error:', error)
+  })
+})
+
+ipcMain.handle('hide-visualizer', () => {
+  if (visualizerWindow) {
+    visualizerWindow.hide()
+    visualizerWindow.destroy()
+    visualizerWindow = null
+    // Notify the main window that the visualizer was closed
+    if (mainWindow) {
+      mainWindow.webContents.send('visualizer-closed')
+    }
+  }
 })
