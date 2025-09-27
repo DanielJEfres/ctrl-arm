@@ -20,6 +20,10 @@
   -webkit-app-region: drag;
   position: relative;
   z-index: 1000;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 }
 
 .taskbar-left {

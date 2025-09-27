@@ -17,7 +17,7 @@ function createWindow() {
     x: 0,
     y: 0,
     frame: false,
-    transparent: true,
+    transparent: false,
     alwaysOnTop: true,
     skipTaskbar: false,
     resizable: false,
@@ -28,8 +28,7 @@ function createWindow() {
       preload: join(__dirname, 'preload.js')
     },
     titleBarStyle: 'hidden',
-    vibrancy: 'under-window',
-    visualEffectState: 'active'
+    backgroundColor: '#000000'
   })
 
   mainWindow.loadURL('http://localhost:5174')

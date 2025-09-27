@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import StatusBar from './components/StatusBar'
+import logo from '../assets/images/Ctrl-arm-01.svg?url'
 import './styles/App.css'
 
 declare global {
@@ -20,30 +21,12 @@ interface BackendStatus {
 }
 
 function App() {
-  const [backendStatus, setBackendStatus] = useState<BackendStatus>({
+  const [backendStatus] = useState<BackendStatus>({
     isRunning: true,
     lastOutput: 'System initialized successfully',
     error: null
   })
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const fillerMessages = [
-        'System status: OK',
-        'Temperature: 24.5°C',
-        'Position updated',
-        'Sensor readings nominal',
-        'Heartbeat received',
-        'Memory usage: 45%'
-      ]
-      
-      const randomMessage = fillerMessages[Math.floor(Math.random() * fillerMessages.length)]
-      
-      setBackendStatus(prev => ({ ...prev, lastOutput: randomMessage }))
-    }, 3000)
-
-    return () => clearInterval(interval)
-  }, [])
 
   const handleClose = () => {
     if (window.electronAPI) {
@@ -51,22 +34,23 @@ function App() {
     }
   }
 
-  const handleRestartBackend = () => {
-    setBackendStatus(prev => ({ ...prev, lastOutput: 'Backend restarting...' }))
-    
-    setTimeout(() => {
-      setBackendStatus(prev => ({ ...prev, lastOutput: 'Backend online', isRunning: true }))
-    }, 2000)
-  }
 
   return (
     <div className="app w-full" style={{width: '100vw'}}>
       <div className="taskbar w-full" style={{width: '100%'}}>
         <div className="taskbar-left">
-          <div className="app-title">Ctrl-Arm</div>
+          <div className="app-title">
+            <img 
+              src={logo} 
+              alt="Ctrl-Arm" 
+              style={{ width: '120px', height: '40px' }}
+              draggable={false}
+              onLoad={() => console.log('Image loaded successfully')}
+              onError={(e) => console.log('Image failed to load:', e)}
+            />
+          </div>
           <StatusBar 
             status={backendStatus} 
-            onRestart={handleRestartBackend}
           />
         </div>
         

@@ -9,27 +9,16 @@ interface BackendStatus {
 
 interface StatusBarProps {
   status: BackendStatus
-  onRestart: () => void
 }
 
-const StatusBar: React.FC<StatusBarProps> = ({ status, onRestart }) => {
+const StatusBar: React.FC<StatusBarProps> = ({ status }) => {
   return (
     <div className="status-bar">
       <div className="status-indicator">
         <div className={`status-dot ${status.isRunning ? 'running' : 'stopped'}`} />
         <span className="status-text">
-          {status.isRunning ? 'Backend Running' : 'Backend Stopped'}
+          {status.isRunning ? 'Running' : 'Stopped'}
         </span>
-      </div>
-      
-      <div className="status-actions">
-        <button 
-          className="action-btn restart-btn"
-          onClick={onRestart}
-          title="Restart Backend"
-        >
-          🔄
-        </button>
       </div>
       
       {status.error && (
