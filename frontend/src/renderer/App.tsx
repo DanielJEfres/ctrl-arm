@@ -70,6 +70,14 @@ function App() {
           />
         </div>
         
+        <div className="taskbar-center">
+          <div className="preset-display">
+            <span>Preset</span>
+            <span>&nbsp;-&nbsp;</span>
+            <span style={{ fontSize: '20px', fontWeight: '600' }}>Default</span>
+          </div>
+        </div>
+        
         <div className="taskbar-right">
           <button 
             className="control-btn auto-hide-btn" 
