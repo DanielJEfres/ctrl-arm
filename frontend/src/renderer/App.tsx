@@ -59,7 +59,6 @@ function App() {
   }
 
   const handleToggleConfig = () => {
-    console.log('handleToggleConfig called, current state:', isConfigVisible)
     setIsConfigVisible(!isConfigVisible)
   }
 

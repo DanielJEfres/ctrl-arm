@@ -20,7 +20,6 @@ function Visualizer({ isVisible, onClose }: VisualizerProps) {
     }
   }, [isVisible])
 
-  // Listen for close events from the visualizer window
   useEffect(() => {
     const handleVisualizerClose = () => {
       onClose()
@@ -37,8 +36,6 @@ function Visualizer({ isVisible, onClose }: VisualizerProps) {
     }
   }, [onClose])
 
-  // This component now just handles the IPC communication
-  // The actual visualizer is rendered in a separate Electron window
   return null
 }
 

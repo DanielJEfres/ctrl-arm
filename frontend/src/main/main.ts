@@ -15,7 +15,6 @@ const hoverCooldown = 500
 const hideCooldown = 1000
 let lastHoverState = false
 
-// Sidebar hover logic
 let sidebarHoverZoneWidth = 20
 let sidebarHoverCooldown = 300
 let sidebarHideCooldown = 800
@@ -78,7 +77,6 @@ function createWindow() {
   })
 
   mainWindow.on('close', () => {
-    // Clear any pending timers
     if (hideTimeout) {
       clearTimeout(hideTimeout)
       hideTimeout = null
@@ -87,7 +85,6 @@ function createWindow() {
       clearTimeout(showTimeout)
       showTimeout = null
     }
-    // Force immediate cleanup
     mainWindow.destroy()
     mainWindow = null
   })
@@ -156,7 +153,6 @@ function animateWindowToPosition(targetX: number, targetY: number) {
 function animateSidebarToPosition(window: any, targetX: number, targetY: number) {
   if (!window) return
   
-  // Temporarily make window movable for animation
   const wasMovable = window.isMovable()
   if (!wasMovable) {
     window.setMovable(true)
@@ -170,7 +166,6 @@ function animateSidebarToPosition(window: any, targetX: number, targetY: number)
   
   if (Math.abs(deltaX) < 5 && Math.abs(deltaY) < 5) {
     window.setPosition(targetX, targetY)
-    // Restore original movable state
     if (!wasMovable) {
       window.setMovable(false)
     }
@@ -192,7 +187,6 @@ function animateSidebarToPosition(window: any, targetX: number, targetY: number)
     try {
       window.setPosition(newX, newY)
     } catch (error) {
-      // Restore original movable state on error
       if (!wasMovable) {
         window.setMovable(false)
       }
@@ -202,7 +196,6 @@ function animateSidebarToPosition(window: any, targetX: number, targetY: number)
     if (currentStep < steps) {
       setTimeout(() => animate(), 20)
     } else {
-      // Restore original movable state when animation completes
       if (!wasMovable) {
         window.setMovable(false)
       }
@@ -277,27 +270,22 @@ function startSidebarHoverTimer() {
     const primaryDisplay = screen.getPrimaryDisplay()
     const { width: screenWidth, height: screenHeight } = primaryDisplay.bounds
     
-    // Check left edge hover zone for visualizer
     const isInLeftHoverZone = cursor.x <= sidebarHoverZoneWidth
     
-    // Check right edge hover zone for config
     const isInRightHoverZone = cursor.x >= screenWidth - sidebarHoverZoneWidth
     
-    // Check if cursor is over visualizer sidebar
     const isOverVisualizer = visualizerWindow && visualizerWindow.isVisible() && 
       cursor.x >= 0 && cursor.x <= 400 && 
       cursor.y >= Math.floor((screenHeight - 600) / 2) && 
       cursor.y <= Math.floor((screenHeight - 600) / 2) + 600
     
-    // Check if cursor is over config sidebar
     const isOverConfig = configWindow && configWindow.isVisible() && 
-      cursor.x >= screenWidth - 500 && cursor.x <= screenWidth && 
-      cursor.y >= Math.floor((screenHeight - 700) / 2) && 
-      cursor.y <= Math.floor((screenHeight - 700) / 2) + 700
+      cursor.x >= screenWidth - 250 && cursor.x <= screenWidth && 
+      cursor.y >= Math.floor((screenHeight - 750) / 2) && 
+      cursor.y <= Math.floor((screenHeight - 750) / 2) + 750
     
     const isOverAnySidebar = isOverVisualizer || isOverConfig
     
-    // Handle left edge hover (visualizer)
     if (isInLeftHoverZone || isOverVisualizer) {
       if (!lastSidebarHoverState) {
         lastSidebarHoverState = true
@@ -306,28 +294,23 @@ function startSidebarHoverTimer() {
           sidebarHideTimeout = null
         }
         
-        // Hide config if visible with animation
         if (configWindow && configWindow.isVisible()) {
           const primaryDisplay = screen.getPrimaryDisplay()
           const { width: screenWidth, height: screenHeight } = primaryDisplay.bounds
-          animateSidebarToPosition(configWindow, screenWidth, Math.floor((screenHeight - 700) / 2))
+          animateSidebarToPosition(configWindow, screenWidth, Math.floor((screenHeight - 750) / 2))
           setTimeout(() => {
             if (configWindow) configWindow.hide()
           }, 300) // Wait for animation to complete
         }
         
-        // Show visualizer if not visible
         if (!visualizerWindow || !visualizerWindow.isVisible()) {
           if (!sidebarShowTimeout) {
             sidebarShowTimeout = setTimeout(() => {
-              // Show existing visualizer window
               if (visualizerWindow) {
                 const primaryDisplay = screen.getPrimaryDisplay()
                 const { height: screenHeight } = primaryDisplay.bounds
-                // Reset position to off-screen before showing
                 visualizerWindow.setPosition(-400, Math.floor((screenHeight - 600) / 2))
                 visualizerWindow.show()
-                // Animate it in
                 animateSidebarToPosition(visualizerWindow, 0, Math.floor((screenHeight - 600) / 2))
                 return
               }
@@ -338,7 +321,7 @@ function startSidebarHoverTimer() {
               visualizerWindow = new BrowserWindow({
                 width: 400,
                 height: 600,
-                x: -400, // Start off-screen to the left
+                x: -400,
                 y: Math.floor((screenHeight - 600) / 2),
                 frame: false,
                 transparent: true,
@@ -358,10 +341,9 @@ function startSidebarHoverTimer() {
               
               visualizerWindow.show()
               
-              // Animate visualizer sliding in from left
               animateSidebarToPosition(visualizerWindow, 0, Math.floor((screenHeight - 600) / 2))
               
-              const htmlPath = join(__dirname, '../src/renderer/visualizer.html')
+              const htmlPath = join(process.cwd(), 'src/renderer/visualizer.html')
               visualizerWindow.loadFile(htmlPath).then(() => {
                 visualizerWindow.reload()
               }).catch((error: any) => {
@@ -378,7 +360,6 @@ function startSidebarHoverTimer() {
       }
     }
     
-    // Handle right edge hover (config)
     if (isInRightHoverZone || isOverConfig) {
       if (!lastSidebarHoverState) {
         lastSidebarHoverState = true
@@ -387,7 +368,6 @@ function startSidebarHoverTimer() {
           sidebarHideTimeout = null
         }
         
-        // Hide visualizer if visible with animation
         if (visualizerWindow && visualizerWindow.isVisible()) {
           const primaryDisplay = screen.getPrimaryDisplay()
           const { height: screenHeight } = primaryDisplay.bounds
@@ -397,19 +377,15 @@ function startSidebarHoverTimer() {
           }, 300) // Wait for animation to complete
         }
         
-        // Show config if not visible
         if (!configWindow || !configWindow.isVisible()) {
           if (!sidebarShowTimeout) {
             sidebarShowTimeout = setTimeout(() => {
-              // Show existing config window
               if (configWindow) {
                 const primaryDisplay = screen.getPrimaryDisplay()
                 const { width: screenWidth, height: screenHeight } = primaryDisplay.bounds
-                // Reset position to off-screen before showing
-                configWindow.setPosition(screenWidth, Math.floor((screenHeight - 700) / 2))
+                configWindow.setPosition(screenWidth, Math.floor((screenHeight - 750) / 2))
                 configWindow.show()
-                // Animate it in
-                animateSidebarToPosition(configWindow, screenWidth - 500, Math.floor((screenHeight - 700) / 2))
+                animateSidebarToPosition(configWindow, screenWidth - 250, Math.floor((screenHeight - 750) / 2))
                 return
               }
               
@@ -417,10 +393,10 @@ function startSidebarHoverTimer() {
               const { width: screenWidth, height: screenHeight } = primaryDisplay.bounds
               
               configWindow = new BrowserWindow({
-                width: 500,
-                height: 700,
-                x: screenWidth, // Start off-screen to the right
-                y: Math.floor((screenHeight - 700) / 2),
+                width: 250,
+                height: 750,
+                x: screenWidth,
+                y: Math.floor((screenHeight - 750) / 2),
                 frame: false,
                 transparent: true,
                 alwaysOnTop: true,
@@ -439,10 +415,11 @@ function startSidebarHoverTimer() {
               
               configWindow.show()
               
-              // Animate config sliding in from right
-              animateSidebarToPosition(configWindow, screenWidth - 500, Math.floor((screenHeight - 700) / 2))
+              setTimeout(() => {
+                animateSidebarToPosition(configWindow, screenWidth - 250, Math.floor((screenHeight - 750) / 2))
+              }, 50)
               
-              const htmlPath = join(__dirname, '../src/renderer/config-popup.html')
+              const htmlPath = join(process.cwd(), 'src/renderer/config-popup.html')
               configWindow.loadFile(htmlPath).then(() => {
                 configWindow.reload()
               }).catch((error: any) => {
@@ -459,7 +436,6 @@ function startSidebarHoverTimer() {
       }
     }
     
-    // Hide sidebars when not hovering
     if (!isInLeftHoverZone && !isInRightHoverZone && !isOverAnySidebar) {
       if (lastSidebarHoverState) {
         lastSidebarHoverState = false
@@ -468,7 +444,6 @@ function startSidebarHoverTimer() {
           sidebarShowTimeout = null
         }
         
-        // Hide sidebars if visible
         if ((visualizerWindow && visualizerWindow.isVisible()) || 
             (configWindow && configWindow.isVisible())) {
                 if (!sidebarHideTimeout) {
@@ -484,7 +459,7 @@ function startSidebarHoverTimer() {
                     if (configWindow && configWindow.isVisible()) {
                       const primaryDisplay = screen.getPrimaryDisplay()
                       const { width: screenWidth, height: screenHeight } = primaryDisplay.bounds
-                      animateSidebarToPosition(configWindow, screenWidth, Math.floor((screenHeight - 700) / 2))
+                      animateSidebarToPosition(configWindow, screenWidth, Math.floor((screenHeight - 750) / 2))
                       setTimeout(() => {
                         if (configWindow) configWindow.hide()
                       }, 300)
@@ -597,38 +572,34 @@ ipcMain.handle('show-visualizer', () => {
   visualizerWindow = new BrowserWindow({
     width: 400,
     height: 600,
-    x: -400, // Start off-screen to the left
-    y: Math.floor((screenHeight - 600) / 2), // Vertically centered
-    frame: false, // No frame for clean look
-    transparent: true, // Transparent for glassmorphism effect
+    x: -400,
+    y: Math.floor((screenHeight - 600) / 2),
+    frame: false,
+    transparent: true,
     alwaysOnTop: true,
-    skipTaskbar: true, // Don't show in taskbar
-    resizable: false, // Fixed size
-    movable: false, // Fixed position
+    skipTaskbar: true,
+    resizable: false,
+    movable: false,
     show: false,
-    focusable: false, // Don't steal focus
+    focusable: false,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       preload: join(__dirname, 'preload.js')
     },
-    backgroundColor: 'rgba(0,0,0,0)' // Transparent background
+    backgroundColor: 'rgba(0,0,0,0)'
   })
   
-  // Show window immediately without loading HTML first
   visualizerWindow.show()
   console.log('Visualizer window shown immediately')
   
-  // Animate visualizer sliding in from left
   animateSidebarToPosition(visualizerWindow, 0, Math.floor((screenHeight - 600) / 2))
   
-  // Load HTML file properly with cache busting
-  const htmlPath = join(__dirname, '../src/renderer/visualizer.html')
+  const htmlPath = join(process.cwd(), 'src/renderer/visualizer.html')
   console.log('Loading HTML from:', htmlPath)
   
   visualizerWindow.loadFile(htmlPath).then(() => {
     console.log('HTML loaded successfully')
-    // Force reload to get latest changes
     visualizerWindow.reload()
   }).catch((error: any) => {
     console.error('Error loading HTML:', error)
@@ -652,14 +623,12 @@ ipcMain.handle('hide-visualizer', () => {
     visualizerWindow.hide()
     visualizerWindow.destroy()
     visualizerWindow = null
-    // Notify the main window that the visualizer was closed
     if (mainWindow) {
       mainWindow.webContents.send('visualizer-closed')
     }
   }
 })
 
-// Config popup handlers
 ipcMain.handle('show-config', () => {
   console.log('show-config IPC handler called')
   if (configWindow) {
@@ -674,37 +643,33 @@ ipcMain.handle('show-config', () => {
   
   configWindow = new BrowserWindow({
     width: 500,
-    height: 700,
-    x: screenWidth, // Start off-screen to the right
-    y: Math.floor((screenHeight - 700) / 2), // Vertically centered
-    frame: false, // No frame for clean look
-    transparent: true, // Transparent for glassmorphism effect
+    height: 800,
+    x: screenWidth,
+    y: Math.floor((screenHeight - 600) / 2),
+    frame: false,
+    transparent: true,
     alwaysOnTop: true,
-    skipTaskbar: true, // Don't show in taskbar
-    resizable: false, // Fixed size
-    movable: false, // Fixed position
+    skipTaskbar: true,
+    resizable: false,
+    movable: false,
     show: false,
-    focusable: false, // Don't steal focus
+    focusable: false,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       preload: join(__dirname, 'preload.js')
     },
-    backgroundColor: 'rgba(0,0,0,0)' // Transparent background
+    backgroundColor: 'rgba(0,0,0,0)'
   })
   
-  // Show window immediately
   configWindow.show()
   console.log('Config window shown immediately')
   
-  // Animate config sliding in from right
-  animateSidebarToPosition(configWindow, screenWidth - 500, Math.floor((screenHeight - 700) / 2))
+  animateSidebarToPosition(configWindow, screenWidth - 250, Math.floor((screenHeight - 600) / 2))
   
-  // Load HTML file
-  const htmlPath = join(__dirname, '../src/renderer/config-popup.html')
+  const htmlPath = join(process.cwd(), 'src/renderer/config-popup.html')
   console.log('Loading config HTML from:', htmlPath)
   
-  // Check if file exists
   if (!fs.existsSync(htmlPath)) {
     console.error('Config HTML file not found at:', htmlPath)
     return
@@ -738,7 +703,6 @@ ipcMain.handle('hide-config', () => {
     configWindow.hide()
     configWindow.destroy()
     configWindow = null
-    // Notify the main window that the config was closed
     if (mainWindow) {
       mainWindow.webContents.send('config-closed')
     }
@@ -748,7 +712,6 @@ ipcMain.handle('hide-config', () => {
 ipcMain.handle('get-config', async () => {
   console.log('get-config IPC handler called')
   try {
-    // Try multiple possible paths for the config file
     const possiblePaths = [
       join(__dirname, '../../hardware/config.yaml'),
       join(process.cwd(), 'hardware/config.yaml'),

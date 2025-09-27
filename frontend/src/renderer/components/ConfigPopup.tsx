@@ -18,7 +18,6 @@ function ConfigPopup({ isVisible, onClose }: ConfigPopupProps) {
     }
   }, [isVisible])
 
-  // Listen for close events from the config window
   useEffect(() => {
     const handleConfigClose = () => {
       onClose()
@@ -35,8 +34,6 @@ function ConfigPopup({ isVisible, onClose }: ConfigPopupProps) {
     }
   }, [onClose])
 
-  // This component now just handles the IPC communication
-  // The actual config popup is rendered in a separate Electron window
   return null
 }
 
