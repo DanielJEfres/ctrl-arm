@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import Mainbar from './components/Mainbar'
 import Visualizer from './components/Visualizer'
 import ConfigPopup from './components/ConfigPopup'
@@ -17,10 +17,14 @@ declare global {
       getAutoHideStatus: () => Promise<boolean>
       showVisualizer: () => Promise<void>
       hideVisualizer: () => Promise<void>
+      showConfig: () => Promise<void>
+      hideConfig: () => Promise<void>
+      getConfig: () => Promise<any>
       onBackendOutput: (callback: (data: string) => void) => void
       onBackendError: (callback: (data: string) => void) => void
       onBackendClosed: (callback: (code: number) => void) => void
       onVisualizerClosed: (callback: () => void) => void
+      onConfigClosed: (callback: () => void) => void
       removeAllListeners: (channel: string) => void
     }
   }
