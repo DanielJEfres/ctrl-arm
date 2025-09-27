@@ -10,23 +10,21 @@ class LabelingTool:
         self.input_file = input_file
         self.output_file = output_file or f"{Path(input_file).stem}_labeled.csv"
 
-        self.gesture_labels = {
-            '0': 'rest',
-            '1': 'flex',
-            '2': 'hold',
-            '3': 'click',
-            '4': 'double_click',
-            '5': 'wrist_up',
-            '6': 'wrist_down',
-            '7': 'wrist_left',
-            '8': 'wrist_right',
-            '9': 'pinch',
-            'a': 'fist',
-            'b': 'wave',
-            'c': 'scroll_up',
-            'd': 'scroll_down',
-            'e': 'unknown'
-        }
+                self.gesture_labels = {
+                    '0': 'rest',
+                    '1': 'left_single',
+                    '2': 'right_single',
+                    '3': 'left_double',
+                    '4': 'right_double',
+                    '5': 'left_hold',
+                    '6': 'right_hold',
+                    '7': 'both_flex',
+                    '8': 'left_then_right',
+                    '9': 'right_then_left',
+                    'a': 'left_hard',
+                    'b': 'right_hard',
+                    'c': 'unknown'
+                }
 
         self.reverse_labels = {v: k for k, v in self.gesture_labels.items()}
 
@@ -75,21 +73,17 @@ class LabelingTool:
         # Map filename prefixes to gesture labels
         gesture_map = {
             'rest': 'rest',
-            'flex': 'flex',
-            'hold': 'hold',
-            'click': 'click',
-            'double_click': 'double_click',
-            'wrist_up': 'wrist_up',
-            'wrist_down': 'wrist_down',
-            'wrist_left': 'wrist_left',
-            'wrist_right': 'wrist_right',
-            'pinch': 'pinch',
-            'fist': 'fist',
-            'wave': 'wave',
-            'scroll_up': 'scroll_up',
-            'scroll_down': 'scroll_down',
-            'scroll': 'scroll_up',  # fallback for scroll files
-            'wrist': 'wrist_up'      # fallback for wrist files
+            'left_single': 'left_single',
+            'right_single': 'right_single',
+            'left_double': 'left_double',
+            'right_double': 'right_double',
+            'left_hold': 'left_hold',
+            'right_hold': 'right_hold',
+            'both_flex': 'both_flex',
+            'left_then_right': 'left_then_right',
+            'right_then_left': 'right_then_left',
+            'left_hard': 'left_hard',
+            'right_hard': 'right_hard'
         }
 
         labeled_count = 0
@@ -130,21 +124,17 @@ class LabelingTool:
         # Map filename prefixes to gesture labels
         gesture_map = {
             'rest': 'rest',
-            'flex': 'flex',
-            'hold': 'hold',
-            'click': 'click',
-            'double_click': 'double_click',
-            'wrist_up': 'wrist_up',
-            'wrist_down': 'wrist_down',
-            'wrist_left': 'wrist_left',
-            'wrist_right': 'wrist_right',
-            'pinch': 'pinch',
-            'fist': 'fist',
-            'wave': 'wave',
-            'scroll_up': 'scroll_up',
-            'scroll_down': 'scroll_down',
-            'scroll': 'scroll_up',  # fallback for scroll files
-            'wrist': 'wrist_up'      # fallback for wrist files
+            'left_single': 'left_single',
+            'right_single': 'right_single',
+            'left_double': 'left_double',
+            'right_double': 'right_double',
+            'left_hold': 'left_hold',
+            'right_hold': 'right_hold',
+            'both_flex': 'both_flex',
+            'left_then_right': 'left_then_right',
+            'right_then_left': 'right_then_left',
+            'left_hard': 'left_hard',
+            'right_hard': 'right_hard'
         }
 
         for file_path in feature_files:

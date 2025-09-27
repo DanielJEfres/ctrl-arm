@@ -7,27 +7,38 @@ from datetime import datetime
 import threading
 import queue
 import numpy as np
+import pandas as pd
 from pathlib import Path
 import signal
 import sys
 
-# Available action labels for training
 ACTION_LABELS = [
-    'rest',        # No muscle activity
-    'flex',        # Bicep/forearm flex
-    'hold',        # Sustained flex
-    'click',       # Quick flex and release
-    'double_click', # Two quick flexes
-    'wrist_up',    # Wrist rotation up
-    'wrist_down',  # Wrist rotation down
-    'wrist_left',  # Wrist rotation left
-    'wrist_right', # Wrist rotation right
-    'pinch',       # Finger pinch gesture
-    'fist',        # Full fist clench
-    'wave',        # Wave motion
-    'scroll_up',   # Scroll up gesture
-    'scroll_down', # Scroll down gesture
+    'rest',
+    'left_single',
+    'right_single',
+    'left_double',
+    'right_double',
+    'left_hold',
+    'right_hold',
+    'both_flex',
+    'left_then_right',
+    'right_then_left',
+    'left_hard',
+    'right_hard'
 ]
+
+CALIBRATION_THRESHOLDS = {
+    'baseline_left': 0,
+    'baseline_right': 0,
+    'mvc_left': 0,        # Maximum voluntary contraction
+    'mvc_right': 0,
+    'light_threshold_left': 0,
+    'medium_threshold_left': 0,
+    'hard_threshold_left': 0,
+    'light_threshold_right': 0,
+    'medium_threshold_right': 0,
+    'hard_threshold_right': 0
+}
 
 class DataLogger:
     def __init__(self, port, baudrate=115200, output_dir='data/raw'):
@@ -44,14 +55,13 @@ class DataLogger:
         self.start_time = None
         
     def connect(self):
-        """Establish serial connection with XIAO"""
         try:
             self.serial_conn = serial.Serial(
                 port=self.port,
                 baudrate=self.baudrate,
                 timeout=1.0
             )
-            time.sleep(2)  # Wait for Arduino to reset
+            time.sleep(2)
             
             # Clear initial messages
             while self.serial_conn.in_waiting:
@@ -189,9 +199,8 @@ class DataLogger:
         return filename
     
     def record_multiple_sessions(self, session_plan):
-        print("\n" + "="*50)
-        print("Multi-Session Recording")
-        print("="*50)
+        print("\nMulti-Session Recording")
+        print("-" * 23)
 
         for i, (label, duration, instruction) in enumerate(session_plan):
             print(f"\n[{i+1}/{len(session_plan)}] Next: {label.upper()}")
@@ -211,36 +220,231 @@ class DataLogger:
 
         print("\nAll sessions complete!")
     
+    def get_calibration_thresholds(self):
+        return CALIBRATION_THRESHOLDS.copy()
+
     def close(self):
         if self.serial_conn:
             self.serial_conn.close()
             print("Connection closed")
 
+    def calibrate_thresholds(self, calibration_data=None):
+        global CALIBRATION_THRESHOLDS
+
+        if calibration_data is None:
+            # Use existing session data if available
+            if not hasattr(self, 'calibration_sessions') or not self.calibration_sessions:
+                print("No calibration data available. Run calibration first.")
+                return False
+
+            calibration_data = []
+            for session in self.calibration_sessions:
+                calibration_data.extend(session)
+
+        if not calibration_data:
+            print("No calibration data provided")
+            return False
+
+        # Convert to DataFrame for analysis
+        df = pd.DataFrame(calibration_data)
+
+        # Calculate baselines (rest periods)
+        rest_data_left = df[df['label'] == 'rest']['emg1_left']
+        rest_data_right = df[df['label'] == 'rest']['emg2_right']
+
+        if len(rest_data_left) == 0 or len(rest_data_right) == 0:
+            print("Insufficient rest data for calibration")
+            return False
+
+        baseline_left = rest_data_left.mean() + rest_data_left.std()
+        baseline_right = rest_data_right.mean() + rest_data_right.std()
+
+        # Calculate MVC (maximum voluntary contraction)
+        mvc_left = df[df['label'] == 'left_hard']['emg1_left'].max()
+        mvc_right = df[df['label'] == 'right_hard']['emg2_right'].max()
+
+        if mvc_left <= baseline_left or mvc_right <= baseline_right:
+            print("Invalid MVC values detected")
+            return False
+
+        # Calculate intensity thresholds as percentages of MVC
+        mvc_range_left = mvc_left - baseline_left
+        mvc_range_right = mvc_right - baseline_right
+
+        thresholds = {
+            'baseline_left': float(baseline_left),
+            'baseline_right': float(baseline_right),
+            'mvc_left': float(mvc_left),
+            'mvc_right': float(mvc_right),
+            'light_threshold_left': float(baseline_left + (mvc_range_left * 0.3)),
+            'medium_threshold_left': float(baseline_left + (mvc_range_left * 0.6)),
+            'hard_threshold_left': float(baseline_left + (mvc_range_left * 0.9)),
+            'light_threshold_right': float(baseline_right + (mvc_range_right * 0.3)),
+            'medium_threshold_right': float(baseline_right + (mvc_range_right * 0.6)),
+            'hard_threshold_right': float(baseline_right + (mvc_range_right * 0.9))
+        }
+
+        # Update global thresholds
+        CALIBRATION_THRESHOLDS.update(thresholds)
+
+        # Save thresholds to file
+        thresholds_file = self.output_dir / "calibration_thresholds.json"
+        import json
+        with open(thresholds_file, 'w') as f:
+            json.dump(thresholds, f, indent=2)
+
+        print("Calibration completed!")
+        print(f"  Left MVC: {mvc_left:.1f} (baseline: {baseline_left:.1f})")
+        print(f"  Right MVC: {mvc_right:.1f} (baseline: {baseline_right:.1f})")
+        print(f"  Light threshold: {thresholds['light_threshold_left']:.1f}/{thresholds['light_threshold_right']:.1f}")
+        print(f"  Medium threshold: {thresholds['medium_threshold_left']:.1f}/{thresholds['medium_threshold_right']:.1f}")
+        print(f"  Hard threshold: {thresholds['hard_threshold_left']:.1f}/{thresholds['hard_threshold_right']:.1f}")
+        print(f"  Thresholds saved to: {thresholds_file}")
+
+        return True
+
+    def load_calibration_thresholds(self):
+        global CALIBRATION_THRESHOLDS
+
+        thresholds_file = self.output_dir / "calibration_thresholds.json"
+        if thresholds_file.exists():
+            import json
+            with open(thresholds_file, 'r') as f:
+                loaded_thresholds = json.load(f)
+                CALIBRATION_THRESHOLDS.update(loaded_thresholds)
+                print(f"Loaded calibration thresholds from {thresholds_file}")
+                return True
+        else:
+            print("No calibration file found. Run calibration first.")
+            return False
+
+    def run_calibration_sequence(self):
+        print("\nCalibration Sequence")
+        print("-" * 20)
+        print("This will set up your personalized muscle thresholds.")
+        print("Follow the instructions for best results.\n")
+
+        calibration_sessions = []
+
+        # Step 1: Rest baseline
+        print("Step 1: REST (10 seconds)")
+        print("Keep your arm completely relaxed on the table.")
+        input("Press Enter when ready...")
+        self.start_recording('rest', 10)
+        calibration_sessions.append(self.session_data.copy())
+        print("Rest baseline recorded\n")
+
+        # Step 2: Maximum left flex
+        print("Step 2: MAXIMUM LEFT FLEX (5 seconds)")
+        print("Flex your LEFT bicep as HARD as you comfortably can.")
+        input("Press Enter when ready...")
+        self.start_recording('left_hard', 5)
+        calibration_sessions.append(self.session_data.copy())
+        print("Left maximum recorded\n")
+
+        # Step 3: Rest
+        print("Step 3: REST (3 seconds)")
+        print("Completely relax your arm.")
+        input("Press Enter when ready...")
+        self.start_recording('rest', 3)
+        calibration_sessions.append(self.session_data.copy())
+        print("Rest recorded\n")
+
+        # Step 4: Light left flex (30% effort)
+        print("Step 4: LIGHT LEFT FLEX (3 seconds)")
+        print("Flex your LEFT bicep at about 30% of maximum effort.")
+        input("Press Enter when ready...")
+        self.start_recording('left_single', 3)
+        calibration_sessions.append(self.session_data.copy())
+        print("Light left flex recorded\n")
+
+        # Step 5: Rest
+        print("Step 5: REST (3 seconds)")
+        print("Completely relax your arm.")
+        input("Press Enter when ready...")
+        self.start_recording('rest', 3)
+        calibration_sessions.append(self.session_data.copy())
+        print("Rest recorded\n")
+
+        # Step 6: Maximum right flex
+        print("Step 6: MAXIMUM RIGHT FLEX (5 seconds)")
+        print("Flex your RIGHT bicep as HARD as you comfortably can.")
+        input("Press Enter when ready...")
+        self.start_recording('right_hard', 5)
+        calibration_sessions.append(self.session_data.copy())
+        print("Right maximum recorded\n")
+
+        # Step 7: Rest
+        print("Step 7: REST (3 seconds)")
+        print("Completely relax your arm.")
+        input("Press Enter when ready...")
+        self.start_recording('rest', 3)
+        calibration_sessions.append(self.session_data.copy())
+        print("Rest recorded\n")
+
+        # Step 8: Light right flex (30% effort)
+        print("Step 8: LIGHT RIGHT FLEX (3 seconds)")
+        print("Flex your RIGHT bicep at about 30% of maximum effort.")
+        input("Press Enter when ready...")
+        self.start_recording('right_single', 3)
+        calibration_sessions.append(self.session_data.copy())
+        print("Light right flex recorded\n")
+
+        # Step 9: Final rest
+        print("Step 9: FINAL REST (5 seconds)")
+        print("Keep your arm completely relaxed.")
+        input("Press Enter when ready...")
+        self.start_recording('rest', 5)
+        calibration_sessions.append(self.session_data.copy())
+        print("Final rest recorded\n")
+
+        # Store calibration sessions for threshold calculation
+        self.calibration_sessions = calibration_sessions
+
+        # Calculate and save thresholds
+        all_calibration_data = []
+        for session in calibration_sessions:
+            all_calibration_data.extend(session)
+
+        success = self.calibrate_thresholds(all_calibration_data)
+        if success:
+            print("\nCalibration complete! You can now collect training data.")
+            return True
+        else:
+            print("\nCalibration failed. Please try again.")
+            return False
+
 
 def interactive_mode(logger):
     while True:
-        print("\n" + "="*50)
-        print("EMG + IMU Data Logger - Interactive Mode")
-        print("="*50)
+        print("\nData Logger - Interactive Mode")
+        print("-" * 35)
         print("\nAvailable actions:")
         for i, label in enumerate(ACTION_LABELS, 1):
             print(f"  {i:2d}. {label}")
         print("\n  q. Quit")
         print("  m. Multi-session recording")
-        print("  c. Calibration sequence")
+        print("  c. Run calibration sequence")
+        print("  l. Load existing calibration")
 
-        choice = input("\nSelect action to record (1-14, q, m, c): ").strip().lower()
+        choice = input("\nSelect action to record (1-14, q, m, c, l): ").strip().lower()
 
         if choice == 'q':
             break
         elif choice == 'm':
             session_plan = [
                 ('rest', 5, 'Keep your arm relaxed'),
-                ('flex', 5, 'Flex your bicep moderately'),
-                ('hold', 8, 'Flex and hold for the duration'),
-                ('click', 5, 'Perform quick flex-release clicks'),
-                ('wrist_up', 5, 'Rotate wrist upward'),
-                ('wrist_down', 5, 'Rotate wrist downward'),
+                ('left_single', 5, 'Quick tap flex on left bicep'),
+                ('right_single', 5, 'Quick tap flex on right bicep'),
+                ('left_double', 5, 'Two quick taps on left'),
+                ('right_double', 5, 'Two quick taps on right'),
+                ('left_hold', 8, 'Sustained flex on left'),
+                ('right_hold', 8, 'Sustained flex on right'),
+                ('both_flex', 8, 'Simultaneous left+right flex'),
+                ('left_then_right', 8, 'Left tap then right tap'),
+                ('right_then_left', 8, 'Right tap then left tap'),
+                ('left_hard', 8, 'High intensity left flex'),
+                ('right_hard', 8, 'High intensity right flex'),
                 ('rest', 5, 'Relax again'),
             ]
             logger.record_multiple_sessions(session_plan)
@@ -249,14 +453,24 @@ def interactive_mode(logger):
             print("\nCalibration sequence - follow the prompts")
             calibration_plan = [
                 ('rest', 10, 'Keep arm completely relaxed on table'),
-                ('flex', 3, 'Maximum comfortable flex'),
+                ('left_hard', 3, 'Maximum comfortable left flex'),
                 ('rest', 3, 'Relax'),
-                ('flex', 3, 'Light flex (30% effort)'),
+                ('left_single', 3, 'Light left flex (30% effort)'),
                 ('rest', 3, 'Relax'),
-                ('flex', 3, 'Medium flex (60% effort)'),
+                ('right_hard', 3, 'Maximum comfortable right flex'),
+                ('rest', 3, 'Relax'),
+                ('right_single', 3, 'Light right flex (30% effort)'),
                 ('rest', 5, 'Final relaxation'),
             ]
             logger.record_multiple_sessions(calibration_plan)
+
+        elif choice == 'l':
+            print("\nLoading calibration thresholds...")
+            if logger.load_calibration_thresholds():
+                print("Calibration loaded successfully!")
+                print("You can now collect training data with personalized thresholds.")
+            else:
+                print("Failed to load calibration. Run calibration first.")
 
         else:
             try:
@@ -324,6 +538,9 @@ def main():
 
     if not logger.connect():
         return
+
+    # Try to load existing calibration
+    logger.load_calibration_thresholds()
 
     def signal_handler(sig, frame):
         print("\nStopping...")

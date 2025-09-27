@@ -6,7 +6,20 @@ serial:
 sampling_rate_hz: 200
 emg_sensors: 2 
 
-gesture_labels: ["rest", "flex", "hold", "click", "double_click", "wrist_up", "wrist_down"]
+gesture_labels: [
+  "rest",
+  "left_single",     # quick tap flex on left bicep
+  "right_single",    # quick tap flex on right bicep
+  "left_double",     # two quick taps, left
+  "right_double",    # two quick taps, right
+  "left_hold",       # sustained (>300–500 ms) left
+  "right_hold",      # sustained right
+  "both_flex",       # simultaneous flex (within ~150 ms)
+  "left_then_right", # L tap then R within ~300 ms
+  "right_then_left", # R tap then L within ~300 ms
+  "left_hard",       # intensity band: left > high threshold
+  "right_hard"       # intensity band: right > high threshold
+]
 
 # map modes for adk
 modes:

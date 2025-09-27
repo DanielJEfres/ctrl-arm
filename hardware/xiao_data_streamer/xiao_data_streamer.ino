@@ -10,7 +10,7 @@ const float DEADZONE = 0.01f;
 
 
 const int SAMPLE_RATE_HZ = 200;
-const int SAMPLE_PERIOD_MS = 1000 ;
+const int SAMPLE_PERIOD_MS = 1000 / SAMPLE_RATE_HZ;
 const int EMG_PINS[] = {A0, A1};
 const int NUM_EMG_SENSORS = 2;
 
