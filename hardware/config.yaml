@@ -29,4 +29,5 @@ modes:
   default_mode: 0
 
 # settings
+# Output directory (relative to project root)
 output_dir: "data/raw"

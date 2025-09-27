@@ -126,15 +126,10 @@ def train_model():
         shuffle=False
     )
     
-    # Use GPU if available
-    if torch.cuda.is_available():
-        device = torch.device('cuda')
-        print(f"using: GPU ({torch.cuda.get_device_name(0)})")
-        print(f"cuda version: {torch.version.cuda}")
-        print(f"pytorch version: {torch.__version__}")
-    else:
-        device = torch.device('cpu')
-        print("using: CPU (GPU not available)")
+    # Force CPU usage to avoid CUDA compatibility issues
+    device = torch.device('cpu')
+    print("using: CPU (forced for compatibility)")
+    print(f"pytorch version: {torch.__version__}")
     
     model = EMGNet(X_train.shape[1], len(unique_labels)).to(device)
     
@@ -276,12 +271,8 @@ if __name__ == '__main__':
     print("emg gesture recognition")
     print("=" * 50)
     
-    # check gpu availability
-    if torch.cuda.is_available():
-        print(f"gpu detected: {torch.cuda.get_device_name(0)}")
-        print(f"cuda version: {torch.version.cuda}")
-    else:
-        print("no gpu detected, using cpu")
+    # Force CPU usage to avoid CUDA compatibility issues
+    print("using CPU mode (CUDA disabled for compatibility)")
     print("=" * 50)
     
     # train

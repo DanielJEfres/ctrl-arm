@@ -79,7 +79,10 @@ def run_calibration():
             print("Invalid selection")
             return False
 
-    logger = DataLogger(port, output_dir='data/raw')
+    # Use absolute path to ensure correct location
+    script_dir = Path(__file__).parent.parent  # Go up from hardware/ to project root
+    output_dir = script_dir / 'data' / 'raw'
+    logger = DataLogger(port, output_dir=str(output_dir))
 
     if not logger.connect():
         print("Failed to connect to device")
@@ -139,13 +142,34 @@ def view_collected_data():
         print("No data files found.")
         return
 
-    print(f"\nFound {len(csv_files)} data files:")
-    for f in sorted(csv_files)[-10:]:
+    # Count gestures
+    gesture_counts = {}
+    for csv_file in csv_files:
+        gesture = csv_file.stem.split('_')[0]
+        gesture_counts[gesture] = gesture_counts.get(gesture, 0) + 1
+
+    print(f"\n📊 Data Collection Progress:")
+    print(f"{'='*40}")
+    print(f"Total files: {len(csv_files)}")
+
+    total_with_good_count = 0
+    for gesture in sorted(gesture_counts.keys()):
+        count = gesture_counts[gesture]
+        status = "✅" if count >= 5 else "🔄"
+        if count >= 5:
+            total_with_good_count += 1
+        print(f"  {gesture:<15} | {count:2d} examples {status}")
+
+    print(f"{'='*40}")
+    print(f"Gestures with ≥5 examples: {total_with_good_count}/{len(gesture_counts)}")
+
+    print(f"\n📁 Recent files:")
+    for f in sorted(csv_files)[-5:]:
         size_kb = f.stat().st_size / 1024
         print(f"  {f.name} ({size_kb:.1f} KB)")
 
-    if len(csv_files) > 10:
-        print(f"  ... and {len(csv_files)-10} more files")
+    if len(csv_files) > 5:
+        print(f"  ... and {len(csv_files)-5} more files")
 
 def main():
     print("\nData Collection Tool")
@@ -163,39 +187,55 @@ def main():
         else:
             print("Unknown argument. Use --auto for automated session or --view to see collected data.")
     else:
-        while True:
-            print("\nOptions:")
-            print("  1. Start interactive collection")
-            print("  2. Run automated basic session")
-            print("  3. Run calibration (personalized thresholds)")
-            print("  4. View collected data")
-            print("  5. Test serial connection")
-            print("  6. Exit")
+        # Try to run interactively, but handle cases where input() might not work
+        try:
+            while True:
+                print("\nOptions:")
+                print("  1. Start interactive collection")
+                print("  2. Run automated basic session")
+                print("  3. Run calibration (personalized thresholds)")
+                print("  4. View collected data")
+                print("  5. Test serial connection")
+                print("  6. Exit")
 
-            choice = input("\nSelect option (1-6): ").strip()
+                try:
+                    choice = input("\nSelect option (1-6): ").strip()
+                except (EOFError, KeyboardInterrupt):
+                    print("\nExiting...")
+                    break
+                except Exception as e:
+                    print(f"\nInput not available ({e}), exiting...")
+                    break
 
-            if choice == '1':
-                run_basic_session()
-            elif choice == '2':
-                run_auto_session()
-            elif choice == '3':
-                if run_calibration():
-                    print("Calibration complete! You can now collect training data.")
+                if choice == '1':
+                    run_basic_session()
+                elif choice == '2':
+                    run_auto_session()
+                elif choice == '3':
+                    if run_calibration():
+                        print("✅ Calibration complete! You can now collect training data.")
+                    else:
+                        print("❌ Calibration failed. Please try again.")
+                elif choice == '4':
+                    view_collected_data()
+                elif choice == '5':
+                    import serial.tools.list_ports
+                    print("\nAvailable serial ports:")
+                    for port in serial.tools.list_ports.comports():
+                        print(f"  {port.device}: {port.description}")
+                    print("\nRun 'python data_logger.py --list-ports' for more details")
+                elif choice == '6':
+                    print("\n👋 Goodbye!")
+                    break
                 else:
-                    print("Calibration failed. Please try again.")
-            elif choice == '4':
-                view_collected_data()
-            elif choice == '5':
-                import serial.tools.list_ports
-                print("\nAvailable serial ports:")
-                for port in serial.tools.list_ports.comports():
-                    print(f"  {port.device}: {port.description}")
-                print("\nRun 'python data_logger.py --list-ports' for more details")
-            elif choice == '5':
-                print("Goodbye!")
-                break
-            else:
-                print("Invalid choice.")
+                    print(f"\n❌ Invalid option: {choice}")
+                    print("Please select 1-6")
+
+        except Exception as e:
+            print(f"\n❌ Error in interactive mode: {e}")
+            print("Please use command line arguments instead:")
+            print("  python quick_collect.py --auto")
+            print("  python quick_collect.py --view")
 
 if __name__ == "__main__":
     main()
