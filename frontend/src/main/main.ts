@@ -134,6 +134,17 @@ function createWindow() {
       clearTimeout(showTimeout)
       showTimeout = null
     }
+    
+    if (visualizerWindow) {
+      visualizerWindow.destroy()
+      visualizerWindow = null
+    }
+    
+    if (configWindow) {
+      configWindow.destroy()
+      configWindow = null
+    }
+    
     mainWindow.destroy()
     mainWindow = null
   })
@@ -557,6 +568,16 @@ ipcMain.handle('toggle-window', () => {
 })
 
 ipcMain.handle('close-window', () => {
+  if (visualizerWindow) {
+    visualizerWindow.destroy()
+    visualizerWindow = null
+  }
+  
+  if (configWindow) {
+    configWindow.destroy()
+    configWindow = null
+  }
+  
   if (mainWindow) {
     mainWindow.destroy()
     mainWindow = null
