@@ -1,8 +1,17 @@
-import React, { useState, useEffect } from 'react'
-import ControlPanel from './components/ControlPanel'
+import { useState, useEffect } from 'react'
 import StatusBar from './components/StatusBar'
-import LogViewer from './components/LogViewer'
 import './styles/App.css'
+
+declare global {
+  interface Window {
+    electronAPI: {
+      closeWindow: () => void
+      minimizeWindow: () => void
+      toggleWindow: () => void
+      sendCommand: (command: string) => Promise<any>
+    }
+  }
+}
 
 interface BackendStatus {
   isRunning: boolean
@@ -16,13 +25,6 @@ function App() {
     lastOutput: 'System initialized successfully',
     error: null
   })
-  const [logs, setLogs] = useState<string[]>([
-    '[09:12:34] System startup complete',
-    '[09:12:35] Hardware initialized',
-    '[09:12:36] Calibration data loaded',
-    '[09:12:37] Ready for commands'
-  ])
-  const [isMinimized, setIsMinimized] = useState(false)
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -36,18 +38,12 @@ function App() {
       ]
       
       const randomMessage = fillerMessages[Math.floor(Math.random() * fillerMessages.length)]
-      const timestamp = new Date().toLocaleTimeString()
       
-      setLogs(prev => [...prev.slice(-19), `[${timestamp}] ${randomMessage}`])
       setBackendStatus(prev => ({ ...prev, lastOutput: randomMessage }))
     }, 3000)
 
     return () => clearInterval(interval)
   }, [])
-
-  const handleToggleMinimize = () => {
-    setIsMinimized(!isMinimized)
-  }
 
   const handleClose = () => {
     if (window.electronAPI) {
@@ -56,11 +52,9 @@ function App() {
   }
 
   const handleRestartBackend = () => {
-    setLogs(prev => [...prev.slice(-19), `[${new Date().toLocaleTimeString()}] Backend restart requested`])
     setBackendStatus(prev => ({ ...prev, lastOutput: 'Backend restarting...' }))
     
     setTimeout(() => {
-      setLogs(prev => [...prev.slice(-19), `[${new Date().toLocaleTimeString()}] Backend restart complete`])
       setBackendStatus(prev => ({ ...prev, lastOutput: 'Backend online', isRunning: true }))
     }, 2000)
   }
@@ -76,18 +70,7 @@ function App() {
           />
         </div>
         
-        <div className="taskbar-center">
-          <ControlPanel />
-        </div>
-        
         <div className="taskbar-right">
-          <button 
-            className="control-btn minimize-btn" 
-            onClick={handleToggleMinimize}
-            title={isMinimized ? "Expand" : "Minimize"}
-          >
-            {isMinimized ? "▲" : "▼"}
-          </button>
           <button 
             className="control-btn close-btn" 
             onClick={handleClose}
@@ -97,12 +80,6 @@ function App() {
           </button>
         </div>
       </div>
-      
-      {!isMinimized && (
-        <div className="dropdown-panel">
-          <LogViewer logs={logs} />
-        </div>
-      )}
     </div>
   )
 }
