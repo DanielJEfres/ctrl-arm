@@ -13,6 +13,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   showConfig: () => ipcRenderer.invoke('show-config'),
   hideConfig: () => ipcRenderer.invoke('hide-config'),
   getConfig: () => ipcRenderer.invoke('get-config'),
+  sendVoiceData: (voiceData: any) => ipcRenderer.invoke('send-voice-data', voiceData),
+  sendVoiceStatus: (status: any) => ipcRenderer.invoke('send-voice-status', status),
   
   onBackendOutput: (callback: (data: string) => void) => {
     ipcRenderer.on('backend-output', (event, data) => callback(data))
@@ -28,6 +30,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   onConfigClosed: (callback: () => void) => {
     ipcRenderer.on('config-closed', () => callback())
+  },
+  onVoiceData: (callback: (data: any) => void) => {
+    ipcRenderer.on('voice-data', (event, data) => callback(data))
+  },
+  onVoiceStatus: (callback: (status: any) => void) => {
+    ipcRenderer.on('voice-status', (event, status) => callback(status))
   },
   
   removeAllListeners: (channel: string) => {
@@ -50,11 +58,15 @@ declare global {
       showConfig: () => Promise<void>
       hideConfig: () => Promise<void>
       getConfig: () => Promise<any>
+      sendVoiceData: (voiceData: any) => Promise<any>
+      sendVoiceStatus: (status: any) => Promise<any>
       onBackendOutput: (callback: (data: string) => void) => void
       onBackendError: (callback: (data: string) => void) => void
       onBackendClosed: (callback: (code: number) => void) => void
       onVisualizerClosed: (callback: () => void) => void
       onConfigClosed: (callback: () => void) => void
+      onVoiceData: (callback: (data: any) => void) => void
+      onVoiceStatus: (callback: (status: any) => void) => void
       removeAllListeners: (channel: string) => void
     }
   }

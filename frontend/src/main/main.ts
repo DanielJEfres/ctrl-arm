@@ -2,6 +2,8 @@ import { app, BrowserWindow, ipcMain, screen } from 'electron'
 import { join } from 'path'
 import * as fs from 'fs'
 import * as yaml from 'js-yaml'
+import * as express from 'express'
+import * as cors from 'cors'
 
 let mainWindow: any = null
 let visualizerWindow: any = null
@@ -22,6 +24,53 @@ let lastSidebarHoverState = false
 let sidebarHideTimeout: NodeJS.Timeout | null = null
 let sidebarShowTimeout: NodeJS.Timeout | null = null
 
+// Express server for voice data
+let voiceServer: any = null
+
+function setupVoiceServer() {
+  const app = express()
+  
+  app.use(cors())
+  app.use(express.json())
+  
+  // Voice data endpoint
+  app.post('/api/voice-data', (req, res) => {
+    console.log('Voice data received via HTTP:', req.body)
+    
+    // Send to visualizer window if it exists
+    if (visualizerWindow && !visualizerWindow.isDestroyed()) {
+      visualizerWindow.webContents.send('voice-data', req.body)
+    }
+    
+    // Also send to main window for potential logging
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('voice-data', req.body)
+    }
+    
+    res.json({ success: true })
+  })
+  
+  // Voice status endpoint
+  app.post('/api/voice-status', (req, res) => {
+    console.log('Voice status received via HTTP:', req.body)
+    
+    // Send to visualizer window if it exists
+    if (visualizerWindow && !visualizerWindow.isDestroyed()) {
+      visualizerWindow.webContents.send('voice-status', req.body)
+    }
+    
+    // Also send to main window for potential logging
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('voice-status', req.body)
+    }
+    
+    res.json({ success: true })
+  })
+  
+  voiceServer = app.listen(3000, () => {
+    console.log('Voice server listening on port 3000')
+  })
+}
 
 function createWindow() {
   const primaryDisplay = screen.getPrimaryDisplay()
@@ -479,6 +528,7 @@ app.whenReady().then(() => {
   createWindow()
   startBackend()
   startSidebarHoverTimer()
+  setupVoiceServer()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -742,4 +792,37 @@ ipcMain.handle('get-config', async () => {
     console.error('Error reading config file:', error)
     return null
   }
+})
+
+// Voice data IPC handlers
+ipcMain.handle('send-voice-data', async (_, voiceData: any) => {
+  console.log('Voice data received:', voiceData)
+  
+  // Send voice data to the visualizer window if it exists
+  if (visualizerWindow && !visualizerWindow.isDestroyed()) {
+    visualizerWindow.webContents.send('voice-data', voiceData)
+  }
+  
+  // Also send to main window for potential logging
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('voice-data', voiceData)
+  }
+  
+  return { success: true }
+})
+
+ipcMain.handle('send-voice-status', async (_, status: any) => {
+  console.log('Voice status received:', status)
+  
+  // Send voice status to the visualizer window if it exists
+  if (visualizerWindow && !visualizerWindow.isDestroyed()) {
+    visualizerWindow.webContents.send('voice-status', status)
+  }
+  
+  // Also send to main window for potential logging
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('voice-status', status)
+  }
+  
+  return { success: true }
 })

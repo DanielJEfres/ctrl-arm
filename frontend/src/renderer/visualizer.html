@@ -125,6 +125,79 @@
       text-align: center;
       letter-spacing: 0.3px;
     }
+    
+    .voice-status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #00ff00;
+      animation: pulse 2s infinite;
+    }
+    
+    .status-dot.listening {
+      background: #00ff00;
+    }
+    
+    .status-dot.activated {
+      background: #ffaa00;
+    }
+    
+    .status-dot.error {
+      background: #ff0000;
+    }
+    
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+    
+    .voice-display {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .voice-text-container,
+    .voice-response-container {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    
+    .voice-label {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 12px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .voice-text,
+    .voice-response {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 14px;
+      line-height: 1.4;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      min-height: 20px;
+      word-wrap: break-word;
+    }
+    
+    .voice-timestamp {
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 11px;
+      text-align: right;
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
@@ -150,10 +223,22 @@
       <div class="visualizer-section">
         <div class="section-header">
           <div class="section-title">Voice Recognition</div>
+          <div class="voice-status-indicator" id="voiceStatusIndicator">
+            <div class="status-dot"></div>
+            <span id="voiceStatusText">Listening...</span>
+          </div>
         </div>
         <div class="section-content">
-          <div class="placeholder-text">
-            Voice Recognition Status
+          <div class="voice-display">
+            <div class="voice-text-container">
+              <div class="voice-label">Detected Text:</div>
+              <div class="voice-text" id="voiceText">Say "Gemini" to activate...</div>
+            </div>
+            <div class="voice-response-container">
+              <div class="voice-label">Response:</div>
+              <div class="voice-response" id="voiceResponse">Waiting for command...</div>
+            </div>
+            <div class="voice-timestamp" id="voiceTimestamp"></div>
           </div>
         </div>
       </div>
@@ -171,6 +256,44 @@
               if (window.electronAPI) {
                 window.electronAPI.hideVisualizer()
               }
+            }
+            
+            // Voice data handling
+            function updateVoiceStatus(status) {
+              const statusDot = document.getElementById('voiceStatusIndicator').querySelector('.status-dot');
+              const statusText = document.getElementById('voiceStatusText');
+              
+              // Remove existing status classes
+              statusDot.classList.remove('listening', 'activated', 'error');
+              
+              // Add new status class
+              statusDot.classList.add(status.status);
+              statusText.textContent = status.message;
+              
+              console.log('Voice status updated:', status);
+            }
+            
+            function updateVoiceData(data) {
+              const voiceText = document.getElementById('voiceText');
+              const voiceResponse = document.getElementById('voiceResponse');
+              const voiceTimestamp = document.getElementById('voiceTimestamp');
+              
+              if (data.status === 'detected') {
+                voiceText.textContent = data.text;
+                voiceTimestamp.textContent = new Date(data.timestamp * 1000).toLocaleTimeString();
+              } else if (data.status === 'response') {
+                voiceText.textContent = data.text;
+                voiceResponse.textContent = data.response;
+                voiceTimestamp.textContent = new Date(data.timestamp * 1000).toLocaleTimeString();
+              }
+              
+              console.log('Voice data updated:', data);
+            }
+            
+            // Listen for voice data from the main process
+            if (window.electronAPI) {
+              window.electronAPI.onVoiceStatus(updateVoiceStatus);
+              window.electronAPI.onVoiceData(updateVoiceData);
             }
           </script>
 </body>

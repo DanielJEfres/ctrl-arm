@@ -3,6 +3,8 @@ import os
 import sys
 import time
 import queue
+import requests
+import json
  
 
 try:
@@ -47,6 +49,38 @@ def rms_energy(block: np.ndarray) -> float:
 def transcribe(audio: np.ndarray, model) -> str:
 	result = model.transcribe(audio, language="en")
 	return (result.get("text") or "").strip()
+
+
+def send_voice_data_to_frontend(voice_data: dict):
+	"""Send voice data to the frontend via HTTP request"""
+	try:
+		# Try to send to the frontend if it's running
+		# The frontend will need to expose an HTTP endpoint for this
+		response = requests.post(
+			"http://localhost:3000/api/voice-data",
+			json=voice_data,
+			timeout=0.1  # Very short timeout to avoid blocking
+		)
+		if response.status_code == 200:
+			print(f"[console_runner] Voice data sent to frontend: {voice_data}")
+	except requests.exceptions.RequestException:
+		# Frontend not running or endpoint not available, continue silently
+		pass
+
+
+def send_voice_status_to_frontend(status: dict):
+	"""Send voice status to the frontend via HTTP request"""
+	try:
+		response = requests.post(
+			"http://localhost:3000/api/voice-status",
+			json=status,
+			timeout=0.1  # Very short timeout to avoid blocking
+		)
+		if response.status_code == 200:
+			print(f"[console_runner] Voice status sent to frontend: {status}")
+	except requests.exceptions.RequestException:
+		# Frontend not running or endpoint not available, continue silently
+		pass
 
 
 def main():
@@ -135,6 +169,15 @@ def main():
 						det = text.lower().strip()
 						print(f"Detected: '{det}'")
 						
+						# Send voice data to frontend
+						voice_data = {
+							"text": text,
+							"normalized_text": det,
+							"timestamp": time.time(),
+							"status": "detected"
+						}
+						send_voice_data_to_frontend(voice_data)
+						
 						if waiting_for_wake_word:
 							det_clean = det.replace(" ", "").replace(",", "").replace(".", "").lower()
 							# exact or partial match
@@ -147,6 +190,14 @@ def main():
 								print("[console_runner] Activated! Listening for command...")
 								waiting_for_wake_word = False
 								activated = True
+								
+								# Send activation status to frontend
+								status_data = {
+									"status": "activated",
+									"message": "Listening for command...",
+									"timestamp": time.time()
+								}
+								send_voice_status_to_frontend(status_data)
 							else:
 								continue
 						else:
@@ -180,14 +231,39 @@ def main():
 								spoken = out or '[no text response]'
 								print(f"Gemini: {spoken}\n")
 								
+								# Send response data to frontend
+								response_data = {
+									"text": text,
+									"response": spoken,
+									"timestamp": time.time(),
+									"status": "response"
+								}
+								send_voice_data_to_frontend(response_data)
+								
 								print("[console_runner] Listening for 'Gemini'...")
 								waiting_for_wake_word = True
 								activated = False
+								
+								# Send status back to listening
+								status_data = {
+									"status": "listening",
+									"message": "Listening for 'Gemini'...",
+									"timestamp": time.time()
+								}
+								send_voice_status_to_frontend(status_data)
 							except Exception as e:
 								print(f"[console_runner] GenAI error: {e}")
 								print("[console_runner] Listening for 'Gemini'...")
 								waiting_for_wake_word = True
 								activated = False
+								
+								# Send error status to frontend
+								error_data = {
+									"status": "error",
+									"message": f"GenAI error: {e}",
+									"timestamp": time.time()
+								}
+								send_voice_status_to_frontend(error_data)
 
 	except KeyboardInterrupt:
 		print("\n[console_runner] Exiting...")
