@@ -15,7 +15,6 @@
   max-height: 60px;
   background: rgba(0, 0, 0, 0.85);
   backdrop-filter: blur(20px);
-  border-bottom: 1px solid #cccccc;
   display: flex;
   align-items: center;
   justify-content: space-between;

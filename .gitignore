@@ -40,6 +40,7 @@ frontend/out/
 frontend/app/
 frontend/release/
 frontend/dist_electron/
+frontend/package-lock.json
 
 # IDE and editor files
 .vscode/
@@ -66,7 +67,7 @@ Thumbs.db
 *.backup
 
 # Package manager lock files (optional - uncomment if you want to ignore them)
-# package-lock.json
+package-lock.json
 # yarn.lock
 # pnpm-lock.yaml
 
