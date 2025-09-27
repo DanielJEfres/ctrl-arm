@@ -1,14 +1,13 @@
-const { app, BrowserWindow, ipcMain } = require('electron')
-const { join } = require('path')
-const { spawn } = require('child_process')
+import { app, BrowserWindow, ipcMain, screen } from 'electron'
+import { join } from 'path'
+import { spawn } from 'child_process'
 
 let mainWindow: any = null
 let backendProcess: any = null
 
-const isDev = process.env.NODE_ENV === 'development'
+const isDev = true
 
 function createWindow() {
-  const { screen } = require('electron')
   const primaryDisplay = screen.getPrimaryDisplay()
   const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize
   
@@ -23,6 +22,7 @@ function createWindow() {
     skipTaskbar: false,
     resizable: false,
     movable: true,
+    show: false,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -33,14 +33,12 @@ function createWindow() {
     visualEffectState: 'active'
   })
 
-  if (isDev) {
-    mainWindow.loadURL('http://localhost:5177')
-    mainWindow.webContents.openDevTools()
-  } else {
-    mainWindow.loadFile(join(__dirname, '../index.html'))
-  }
+  mainWindow.loadURL('http://localhost:5174')
+  mainWindow.webContents.openDevTools()
 
   mainWindow.setIgnoreMouseEvents(false)
+  
+  mainWindow.show()
 
   mainWindow.on('closed', () => {
     mainWindow = null
