@@ -108,6 +108,9 @@
       font-size: 14px;
       font-weight: 600;
       letter-spacing: 0.3px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
     
     .section-content {
@@ -129,7 +132,14 @@
     .voice-status-indicator {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
+    }
+    
+    .voice-status-text {
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.3px;
     }
     
     .status-dot {
@@ -168,7 +178,7 @@
     .voice-response-container {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 6px;
     }
     
     .voice-label {
@@ -182,7 +192,8 @@
     .voice-text,
     .voice-response {
       color: rgba(255, 255, 255, 0.9);
-      font-size: 14px;
+      font-size: 13px;
+      font-weight: 400;
       line-height: 1.4;
       padding: 8px 12px;
       background: rgba(255, 255, 255, 0.05);
@@ -197,6 +208,7 @@
       font-size: 11px;
       text-align: right;
       font-style: italic;
+      margin-top: 4px;
     }
   </style>
 </head>
@@ -222,10 +234,12 @@
       
       <div class="visualizer-section">
         <div class="section-header">
-          <div class="section-title">Voice Recognition</div>
-          <div class="voice-status-indicator" id="voiceStatusIndicator">
-            <div class="status-dot"></div>
-            <span id="voiceStatusText">Listening...</span>
+          <div class="section-title">
+            Voice Recognition
+            <div class="voice-status-indicator" id="voiceStatusIndicator">
+              <div class="status-dot"></div>
+              <div class="voice-status-text" id="voiceStatusText">Listening...</div>
+            </div>
           </div>
         </div>
         <div class="section-content">

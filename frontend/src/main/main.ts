@@ -2,8 +2,8 @@ import { app, BrowserWindow, ipcMain, screen } from 'electron'
 import { join } from 'path'
 import * as fs from 'fs'
 import * as yaml from 'js-yaml'
-import * as express from 'express'
-import * as cors from 'cors'
+import express from 'express'
+import cors from 'cors'
 
 let mainWindow: any = null
 let visualizerWindow: any = null
