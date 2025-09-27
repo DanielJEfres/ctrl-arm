@@ -10,8 +10,6 @@ let hoverZoneHeight = 10
 const hoverCooldown = 500
 const hideCooldown = 1000
 let lastHoverState = false
-const animationDuration = 300
-const animationSteps = 20
 
 
 function createWindow() {
@@ -64,6 +62,21 @@ function createWindow() {
   startAutoHideTimer()
 
   mainWindow.on('closed', () => {
+    mainWindow = null
+  })
+
+  mainWindow.on('close', () => {
+    // Clear any pending timers
+    if (hideTimeout) {
+      clearTimeout(hideTimeout)
+      hideTimeout = null
+    }
+    if (showTimeout) {
+      clearTimeout(showTimeout)
+      showTimeout = null
+    }
+    // Force immediate cleanup
+    mainWindow.destroy()
     mainWindow = null
   })
 
@@ -220,7 +233,8 @@ ipcMain.handle('toggle-window', () => {
 
 ipcMain.handle('close-window', () => {
   if (mainWindow) {
-    mainWindow.close()
+    mainWindow.destroy()
+    mainWindow = null
   }
 })
 
