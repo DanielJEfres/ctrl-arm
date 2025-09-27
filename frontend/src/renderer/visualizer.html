@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>Neural Network Visualizer</title>
+    <title>Visualizer</title>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <style>
     * {
@@ -82,22 +82,45 @@
       flex: 1;
       padding: 20px;
       overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
     }
     
-    .neural-network-container {
-      width: 100%;
-      height: 100%;
+    .visualizer-section {
+      flex: 1;
       display: flex;
-      align-items: center;
-      justify-content: center;
+      flex-direction: column;
       background: rgba(255, 255, 255, 0.05);
       border-radius: 8px;
       border: 1px solid rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+    }
+    
+    .section-header {
+      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.08);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .section-title {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+    
+    .section-content {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
     }
     
     .placeholder-text {
       color: rgba(255, 255, 255, 0.6);
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 500;
       text-align: center;
       letter-spacing: 0.3px;
@@ -110,12 +133,28 @@
               <i data-lucide="chevrons-right"></i>
             </div>
     <div class="visualizer-header">
-      <h3>Neural Network Visualizer</h3>
+      <h3>Visualizer</h3>
     </div>
     <div class="visualizer-content">
-      <div class="neural-network-container">
-        <div class="placeholder-text">
-          Neural Network Visualization
+      <div class="visualizer-section">
+        <div class="section-header">
+          <div class="section-title">Neural Network</div>
+        </div>
+        <div class="section-content">
+          <div class="placeholder-text">
+            Neural Network Visualization
+          </div>
+        </div>
+      </div>
+      
+      <div class="visualizer-section">
+        <div class="section-header">
+          <div class="section-title">Voice Recognition</div>
+        </div>
+        <div class="section-content">
+          <div class="placeholder-text">
+            Voice Recognition Status
+          </div>
         </div>
       </div>
     </div>
