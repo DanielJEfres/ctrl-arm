@@ -4,6 +4,7 @@ import logo from '../../assets/images/Ctrl-arm-01.svg?url'
 import { Eye } from 'lucide-react';
 import { EyeClosed } from 'lucide-react';
 import { Brain } from 'lucide-react';
+import { Settings } from 'lucide-react';
 
 interface BackendStatus {
   isRunning: boolean
@@ -14,9 +15,10 @@ interface BackendStatus {
 interface MainbarProps {
   backendStatus: BackendStatus
   onToggleVisualizer: () => void
+  onToggleConfig: () => void
 }
 
-function Mainbar({ backendStatus, onToggleVisualizer }: MainbarProps) {
+function Mainbar({ backendStatus, onToggleVisualizer, onToggleConfig }: MainbarProps) {
   const [isAutoHideEnabled, setIsAutoHideEnabled] = useState(true)
 
   const handleClose = () => {
@@ -57,6 +59,16 @@ function Mainbar({ backendStatus, onToggleVisualizer }: MainbarProps) {
       </div>
       
       <div className="taskbar-right">
+        <button 
+          className="control-btn config-btn" 
+          onClick={() => {
+            console.log('Config button clicked')
+            onToggleConfig()
+          }}
+          title="View Configuration"
+        >
+          <Settings size={16} />
+        </button>
         <button 
           className="control-btn visualizer-btn" 
           onClick={onToggleVisualizer}

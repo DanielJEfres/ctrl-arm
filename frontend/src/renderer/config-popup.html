@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Configuration Viewer</title>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      background: transparent;
+      overflow: hidden;
+      font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+        sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    
+    .config-window {
+      width: 500px;
+      height: 700px;
+      background: rgba(0, 0, 0, 0.9);
+      backdrop-filter: blur(20px);
+      border-radius: 0 12px 12px 0;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-left: none;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+    
+    .config-tab {
+      position: absolute;
+      right: -50px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 50px;
+      height: 200px;
+      background: rgba(0, 122, 255, 1);
+      border-radius: 0 8px 8px 0;
+      border: 5px solid rgba(255, 255, 255, 0.3);
+      border-left: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      z-index: 9999;
+    }
+    
+    .config-tab:hover {
+      background: rgba(0, 0, 0, 0.95);
+      transform: translateY(-50%) scale(1.05);
+    }
+    
+    .config-tab svg {
+      color: rgba(255, 255, 255, 0.9);
+      width: 16px;
+      height: 16px;
+    }
+    
+    .config-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.05);
+    }
+    
+    .config-header h3 {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    
+    .config-content {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    
+    .config-section {
+      margin-bottom: 24px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 16px;
+    }
+    
+    .config-section h4 {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+    
+    .gesture-list {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+    
+    .gesture-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.2s ease;
+    }
+    
+    .gesture-item:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+    
+    .gesture-name {
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.2px;
+    }
+    
+    .gesture-description {
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 11px;
+      font-style: italic;
+      margin-left: 8px;
+    }
+    
+    .mode-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    
+    .mode-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .mode-name {
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 13px;
+      font-weight: 500;
+    }
+    
+    .mode-value {
+      color: rgba(0, 122, 255, 0.8);
+      font-size: 12px;
+      font-weight: 600;
+      background: rgba(0, 122, 255, 0.1);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    
+    .settings-list {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+    
+    .setting-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .setting-name {
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 13px;
+      font-weight: 500;
+    }
+    
+    .setting-value {
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 12px;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    }
+    
+    .loading-text {
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 14px;
+      font-weight: 500;
+      text-align: center;
+      letter-spacing: 0.3px;
+    }
+    
+    .error-text {
+      color: rgba(255, 59, 48, 0.8);
+      font-size: 14px;
+      font-weight: 500;
+      text-align: center;
+      letter-spacing: 0.3px;
+    }
+    
+    /* Scrollbar styling */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    ::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 3px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.5);
+    }
+  </style>
+</head>
+<body>
+  <div class="config-window">
+    <div class="config-tab" onclick="toggleConfig()">
+      <i data-lucide="chevrons-right"></i>
+    </div>
+    
+    <div class="config-header">
+      <h3>Configuration Viewer</h3>
+    </div>
+    
+    <div class="config-content" id="configContent">
+      <div class="loading-text">Loading configuration...</div>
+    </div>
+  </div>
+  
+  <script>
+    // Initialize Lucide icons
+    lucide.createIcons();
+    
+    function toggleConfig() {
+      console.log('toggleConfig called');
+      if (window.electronAPI) {
+        window.electronAPI.hideConfig()
+      }
+    }
+    
+    function renderConfig(config) {
+      const content = document.getElementById('configContent');
+      
+      if (!config) {
+        content.innerHTML = '<div class="error-text">Failed to load configuration</div>';
+        return;
+      }
+      
+      let html = '';
+      
+      // Gesture Labels Section
+      if (config.gesture_labels && config.gesture_labels.length > 0) {
+        html += `
+          <div class="config-section">
+            <h4>Gesture Labels</h4>
+            <div class="gesture-list">
+        `;
+        
+        config.gesture_labels.forEach((gesture, index) => {
+          const description = getGestureDescription(gesture);
+          html += `
+            <div class="gesture-item">
+              <span class="gesture-name">${gesture}</span>
+              <span class="gesture-description">${description}</span>
+            </div>
+          `;
+        });
+        
+        html += `
+            </div>
+          </div>
+        `;
+      }
+      
+      // Modes Section
+      if (config.modes) {
+        html += `
+          <div class="config-section">
+            <h4>Mode Mappings</h4>
+            <div class="mode-list">
+        `;
+        
+        Object.entries(config.modes).forEach(([modeName, modeValue]) => {
+          html += `
+            <div class="mode-item">
+              <span class="mode-name">${modeName.replace('_', ' ')}</span>
+              <span class="mode-value">${modeValue}</span>
+            </div>
+          `;
+        });
+        
+        html += `
+            </div>
+          </div>
+        `;
+      }
+      
+      // Settings Section
+      html += `
+        <div class="config-section">
+          <h4>Settings</h4>
+          <div class="settings-list">
+      `;
+      
+      if (config.serial) {
+        Object.entries(config.serial).forEach(([key, value]) => {
+          html += `
+            <div class="setting-item">
+              <span class="setting-name">Serial ${key}</span>
+              <span class="setting-value">${value}</span>
+            </div>
+          `;
+        });
+      }
+      
+      if (config.sampling_rate_hz) {
+        html += `
+          <div class="setting-item">
+            <span class="setting-name">Sampling Rate</span>
+            <span class="setting-value">${config.sampling_rate_hz} Hz</span>
+          </div>
+        `;
+      }
+      
+      if (config.emg_sensors) {
+        html += `
+          <div class="setting-item">
+            <span class="setting-name">EMG Sensors</span>
+            <span class="setting-value">${config.emg_sensors}</span>
+          </div>
+        `;
+      }
+      
+      if (config.output_dir) {
+        html += `
+          <div class="setting-item">
+            <span class="setting-name">Output Directory</span>
+            <span class="setting-value">${config.output_dir}</span>
+          </div>
+        `;
+      }
+      
+      html += `
+          </div>
+        </div>
+      `;
+      
+      content.innerHTML = html;
+    }
+    
+    function getGestureDescription(gesture) {
+      const descriptions = {
+        'rest': 'No muscle activity',
+        'left_single': 'Quick tap flex on left bicep',
+        'right_single': 'Quick tap flex on right bicep',
+        'left_double': 'Two quick taps, left',
+        'right_double': 'Two quick taps, right',
+        'left_hold': 'Sustained left flex (>300-500ms)',
+        'right_hold': 'Sustained right flex (>300-500ms)',
+        'both_flex': 'Simultaneous flex (within ~150ms)',
+        'left_then_right': 'L tap then R within ~300ms',
+        'right_then_left': 'R tap then L within ~300ms',
+        'left_hard': 'High intensity left flex',
+        'right_hard': 'High intensity right flex'
+      };
+      return descriptions[gesture] || 'Custom gesture';
+    }
+    
+    // Load config when window opens
+    if (window.electronAPI) {
+      window.electronAPI.getConfig().then(config => {
+        renderConfig(config);
+      }).catch(error => {
+        console.error('Failed to load config:', error);
+        document.getElementById('configContent').innerHTML = '<div class="error-text">Failed to load configuration</div>';
+      });
+    }
+  </script>
+</body>
+</html>

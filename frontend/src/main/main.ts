@@ -1,8 +1,11 @@
 import { app, BrowserWindow, ipcMain, screen } from 'electron'
 import { join } from 'path'
+import * as fs from 'fs'
+import * as yaml from 'js-yaml'
 
 let mainWindow: any = null
 let visualizerWindow: any = null
+let configWindow: any = null
 let backendProcess: any = null
 let hideTimeout: NodeJS.Timeout | null = null
 let showTimeout: NodeJS.Timeout | null = null
@@ -354,5 +357,124 @@ ipcMain.handle('hide-visualizer', () => {
     if (mainWindow) {
       mainWindow.webContents.send('visualizer-closed')
     }
+  }
+})
+
+// Config popup handlers
+ipcMain.handle('show-config', () => {
+  console.log('show-config IPC handler called')
+  if (configWindow) {
+    console.log('Config window already exists, showing it')
+    configWindow.show()
+    return
+  }
+  
+  console.log('Creating new config window')
+  const primaryDisplay = screen.getPrimaryDisplay()
+  const { height: screenHeight } = primaryDisplay.bounds
+  
+  configWindow = new BrowserWindow({
+    width: 520, // Wider to accommodate arrow tab
+    height: 700,
+    x: 50, // Position so arrow tab is visible at x: 0
+    y: Math.floor((screenHeight - 700) / 2), // Vertically centered
+    frame: false, // No frame for clean look
+    transparent: true, // Transparent for glassmorphism effect
+    alwaysOnTop: true,
+    skipTaskbar: true, // Don't show in taskbar
+    resizable: false, // Fixed size
+    movable: false, // Fixed position
+    show: false,
+    focusable: false, // Don't steal focus
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: join(__dirname, 'preload.js')
+    },
+    backgroundColor: 'rgba(0,0,0,0)' // Transparent background
+  })
+  
+  // Show window immediately
+  configWindow.show()
+  console.log('Config window shown immediately')
+  
+  // Load HTML file
+  const htmlPath = join(__dirname, '../src/renderer/config-popup.html')
+  console.log('Loading config HTML from:', htmlPath)
+  
+  // Check if file exists
+  if (!fs.existsSync(htmlPath)) {
+    console.error('Config HTML file not found at:', htmlPath)
+    return
+  }
+  
+  configWindow.loadFile(htmlPath).then(() => {
+    console.log('Config HTML loaded successfully')
+    configWindow.reload()
+  }).catch((error: any) => {
+    console.error('Error loading config HTML:', error)
+  })
+  
+  configWindow.on('ready-to-show', () => {
+    console.log('Config window ready to show')
+  })
+  
+  configWindow.on('show', () => {
+    console.log('Config window show event')
+  })
+  
+  configWindow.on('closed', () => {
+    console.log('Config window closed')
+    configWindow = null
+  })
+})
+
+ipcMain.handle('hide-config', () => {
+  console.log('hide-config IPC handler called')
+  if (configWindow) {
+    console.log('Hiding config window')
+    configWindow.hide()
+    configWindow.destroy()
+    configWindow = null
+    // Notify the main window that the config was closed
+    if (mainWindow) {
+      mainWindow.webContents.send('config-closed')
+    }
+  }
+})
+
+ipcMain.handle('get-config', async () => {
+  console.log('get-config IPC handler called')
+  try {
+    // Try multiple possible paths for the config file
+    const possiblePaths = [
+      join(__dirname, '../../hardware/config.yaml'),
+      join(process.cwd(), 'hardware/config.yaml'),
+      join(__dirname, '../../../hardware/config.yaml')
+    ]
+    
+    let configPath: string | null = null
+    for (const path of possiblePaths) {
+      if (fs.existsSync(path)) {
+        configPath = path
+        break
+      }
+    }
+    
+    if (!configPath) {
+      console.error('Config file not found in any of the expected locations:', possiblePaths)
+      return null
+    }
+    
+    console.log('Reading config from:', configPath)
+    
+    const configFile = fs.readFileSync(configPath, 'utf8')
+    const config = yaml.load(configFile)
+    
+    console.log('Config loaded successfully:', config)
+    return config
+  } catch (error) {
+    console.error('Error reading config file:', error)
+    return null
   }
 })

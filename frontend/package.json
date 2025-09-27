@@ -38,7 +38,9 @@
     "wait-on": "^7.0.0"
   },
   "dependencies": {
+    "@types/js-yaml": "^4.0.9",
     "axios": "^1.5.0",
+    "js-yaml": "^4.1.0",
     "lucide-react": "^0.544.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"

@@ -10,6 +10,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getAutoHideStatus: () => ipcRenderer.invoke('get-auto-hide-status'),
   showVisualizer: () => ipcRenderer.invoke('show-visualizer'),
   hideVisualizer: () => ipcRenderer.invoke('hide-visualizer'),
+  showConfig: () => ipcRenderer.invoke('show-config'),
+  hideConfig: () => ipcRenderer.invoke('hide-config'),
+  getConfig: () => ipcRenderer.invoke('get-config'),
   
   onBackendOutput: (callback: (data: string) => void) => {
     ipcRenderer.on('backend-output', (event, data) => callback(data))
@@ -22,6 +25,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   onVisualizerClosed: (callback: () => void) => {
     ipcRenderer.on('visualizer-closed', () => callback())
+  },
+  onConfigClosed: (callback: () => void) => {
+    ipcRenderer.on('config-closed', () => callback())
   },
   
   removeAllListeners: (channel: string) => {
@@ -41,10 +47,14 @@ declare global {
       getAutoHideStatus: () => Promise<boolean>
       showVisualizer: () => Promise<void>
       hideVisualizer: () => Promise<void>
+      showConfig: () => Promise<void>
+      hideConfig: () => Promise<void>
+      getConfig: () => Promise<any>
       onBackendOutput: (callback: (data: string) => void) => void
       onBackendError: (callback: (data: string) => void) => void
       onBackendClosed: (callback: (code: number) => void) => void
       onVisualizerClosed: (callback: () => void) => void
+      onConfigClosed: (callback: () => void) => void
       removeAllListeners: (channel: string) => void
     }
   }

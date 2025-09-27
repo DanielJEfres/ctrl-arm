@@ -96,6 +96,11 @@
   color: white;
 }
 
+.config-btn:hover {
+  background: rgba(0, 150, 136, 0.8);
+  color: white;
+}
+
 .preset-display {
   color: rgba(255, 255, 255, 0.8);
   letter-spacing: 0.3px;

@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import Mainbar from './components/Mainbar'
 import Visualizer from './components/Visualizer'
+import ConfigPopup from './components/ConfigPopup'
 import './styles/App.css'
 
 
@@ -39,6 +40,7 @@ function App() {
   })
 
   const [isVisualizerVisible, setIsVisualizerVisible] = useState(false)
+  const [isConfigVisible, setIsConfigVisible] = useState(false)
 
   const handleCloseVisualizer = () => {
     setIsVisualizerVisible(false)
@@ -48,16 +50,31 @@ function App() {
     setIsVisualizerVisible(!isVisualizerVisible)
   }
 
+  const handleCloseConfig = () => {
+    setIsConfigVisible(false)
+  }
+
+  const handleToggleConfig = () => {
+    console.log('handleToggleConfig called, current state:', isConfigVisible)
+    setIsConfigVisible(!isConfigVisible)
+  }
+
   return (
     <>
       <Mainbar 
         backendStatus={backendStatus}
         onToggleVisualizer={handleToggleVisualizer}
+        onToggleConfig={handleToggleConfig}
       />
       
       <Visualizer 
         isVisible={isVisualizerVisible}
         onClose={handleCloseVisualizer}
+      />
+      
+      <ConfigPopup 
+        isVisible={isConfigVisible}
+        onClose={handleCloseConfig}
       />
       
     </>
