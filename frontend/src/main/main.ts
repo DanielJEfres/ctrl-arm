@@ -33,6 +33,7 @@ function createWindow() {
     movable: true,
     show: false,
     focusable: false,
+    icon: join(__dirname, '../src/assets/images/Ctrl-arm-02.ico'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
