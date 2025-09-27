@@ -32,6 +32,7 @@ function createWindow() {
     resizable: false,
     movable: true,
     show: false,
+    focusable: false,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -71,6 +72,18 @@ function createWindow() {
       if (height !== 60) {
         mainWindow.setSize(width, 60)
       }
+    }
+  })
+
+  mainWindow.on('focus', () => {
+    if (mainWindow) {
+      mainWindow.setSkipTaskbar(false)
+    }
+  })
+
+  mainWindow.on('blur', () => {
+    if (mainWindow) {
+      mainWindow.setSkipTaskbar(false)
     }
   })
 }
@@ -142,6 +155,8 @@ function startAutoHideTimer() {
             if (mainWindow && isAutoHideEnabled) {
               mainWindow.setPosition(0, 0)
               mainWindow.show()
+              mainWindow.setSkipTaskbar(false)
+              mainWindow.blur()
             }
             showTimeout = null
           }, hoverCooldown)
