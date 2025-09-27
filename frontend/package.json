@@ -1,0 +1,36 @@
+{
+  "name": "ctrl-arm-frontend",
+  "version": "1.0.0",
+  "description": "Electron UI for ctrl-arm backend controls",
+  "main": "main.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:main\" \"npm run dev:renderer\"",
+    "dev:main": "electron .",
+    "dev:renderer": "vite",
+    "build": "npm run build:main && npm run build:renderer",
+    "build:main": "tsc -p tsconfig.main.json",
+    "build:renderer": "vite build",
+    "preview": "vite preview",
+    "electron": "electron .",
+    "start": "npm run build:main && npm run dev"
+  },
+  "keywords": ["electron", "typescript", "overlay", "controls"],
+  "author": "ctrl-arm",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.0.0",
+    "concurrently": "^8.2.0",
+    "electron": "^27.0.0",
+    "typescript": "^5.0.0",
+    "vite": "^4.4.0",
+    "wait-on": "^7.0.0"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "axios": "^1.5.0"
+  }
+}

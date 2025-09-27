@@ -1,0 +1,86 @@
+.control-panel {
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-header {
+  display: none;
+}
+
+.panel-content {
+  display: flex;
+  gap: 8px;
+  padding: 0;
+  animation: none;
+}
+
+.control-grid {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+}
+
+.control-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 10px;
+  min-width: 50px;
+}
+
+.control-button:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.95);
+  transform: translateY(-1px);
+}
+
+.control-button:active {
+  transform: translateY(0);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.button-icon {
+  font-size: 16px;
+}
+
+.button-label {
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+
+.custom-command {
+  margin-top: 12px;
+}
+
+.command-input {
+  width: 100%;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.command-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.command-input:focus {
+  border-color: rgba(0, 122, 255, 0.5);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.1);
+}
