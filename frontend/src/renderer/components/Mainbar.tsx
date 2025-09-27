@@ -3,8 +3,6 @@ import StatusBar from './StatusBar'
 import logo from '../../assets/images/Ctrl-arm-01.svg?url'
 import { Eye } from 'lucide-react';
 import { EyeClosed } from 'lucide-react';
-import { Brain } from 'lucide-react';
-import { Settings } from 'lucide-react';
 
 interface BackendStatus {
   isRunning: boolean
@@ -14,11 +12,9 @@ interface BackendStatus {
 
 interface MainbarProps {
   backendStatus: BackendStatus
-  onToggleVisualizer: () => void
-  onToggleConfig: () => void
 }
 
-function Mainbar({ backendStatus, onToggleVisualizer, onToggleConfig }: MainbarProps) {
+function Mainbar({ backendStatus }: MainbarProps) {
   const [isAutoHideEnabled, setIsAutoHideEnabled] = useState(true)
 
   const handleClose = () => {
@@ -60,28 +56,11 @@ function Mainbar({ backendStatus, onToggleVisualizer, onToggleConfig }: MainbarP
       
       <div className="taskbar-right">
         <button 
-          className="control-btn config-btn" 
-          onClick={() => {
-            console.log('Config button clicked')
-            onToggleConfig()
-          }}
-          title="View Configuration"
-        >
-          <Settings size={16} />
-        </button>
-        <button 
-          className="control-btn visualizer-btn" 
-          onClick={onToggleVisualizer}
-          title="Toggle Neural Network Visualizer"
-        >
-          <Brain size={16} />
-        </button>
-        <button 
           className="control-btn auto-hide-btn" 
           onClick={handleToggleAutoHide}
           title={isAutoHideEnabled ? "Disable Auto-Hide" : "Enable Auto-Hide"}
         >
-          {isAutoHideEnabled ? <Eye size={16} /> : <EyeClosed size={16} />}
+          {isAutoHideEnabled ? <EyeClosed size={16} /> : <Eye size={16} />}
         </button>
         <button 
           className="control-btn close-btn" 

@@ -67,8 +67,6 @@ function App() {
     <>
       <Mainbar 
         backendStatus={backendStatus}
-        onToggleVisualizer={handleToggleVisualizer}
-        onToggleConfig={handleToggleConfig}
       />
       
       <Visualizer 
