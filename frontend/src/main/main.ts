@@ -9,7 +9,7 @@ const isDev = true
 
 function createWindow() {
   const primaryDisplay = screen.getPrimaryDisplay()
-  const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize
+  const { width: screenWidth } = primaryDisplay.bounds
   
   mainWindow = new BrowserWindow({
     width: screenWidth,
@@ -22,7 +22,6 @@ function createWindow() {
     skipTaskbar: false,
     resizable: false,
     movable: true,
-    show: false,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -34,10 +33,8 @@ function createWindow() {
   })
 
   mainWindow.loadURL('http://localhost:5174')
-  mainWindow.webContents.openDevTools()
 
   mainWindow.setIgnoreMouseEvents(false)
-  
   mainWindow.show()
 
   mainWindow.on('closed', () => {
@@ -46,7 +43,7 @@ function createWindow() {
 }
 
 function startBackend() {
-  console.log('Backend integration disabled - using filler data')
+  // Backend integration disabled - using filler data
 }
 
 app.whenReady().then(() => {
@@ -96,7 +93,6 @@ ipcMain.handle('restart-backend', () => {
 })
 
 ipcMain.handle('send-command', async (event, command: string) => {
-  console.log(`Simulating command: ${command}`)
   return { 
     success: true, 
     command, 

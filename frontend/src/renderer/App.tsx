@@ -60,14 +60,18 @@ function App() {
   }
 
   return (
-    <div className="app">
-      <div className="taskbar">
+    <div className="app w-full" style={{width: '100vw'}}>
+      <div className="taskbar w-full" style={{width: '100%'}}>
         <div className="taskbar-left">
           <div className="app-title">Ctrl-Arm</div>
           <StatusBar 
             status={backendStatus} 
             onRestart={handleRestartBackend}
           />
+        </div>
+        
+        <div className="taskbar-center w-full">
+          {/* Empty center to fill space */}
         </div>
         
         <div className="taskbar-right">
