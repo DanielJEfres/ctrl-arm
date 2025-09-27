@@ -28,8 +28,11 @@ body {
 
 #root {
   width: 100vw;
-  height: 100vh;
+  height: 60px;
+  min-height: 60px;
+  max-height: 60px;
   background: transparent;
+  overflow: hidden;
 }
 
 ::-webkit-scrollbar {

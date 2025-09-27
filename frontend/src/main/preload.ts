@@ -6,6 +6,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   minimizeWindow: () => ipcRenderer.invoke('minimize-window'),
   restartBackend: () => ipcRenderer.invoke('restart-backend'),
   sendCommand: (command: string) => ipcRenderer.invoke('send-command', command),
+  toggleAutoHide: () => ipcRenderer.invoke('toggle-auto-hide'),
+  getAutoHideStatus: () => ipcRenderer.invoke('get-auto-hide-status'),
   
   onBackendOutput: (callback: (data: string) => void) => {
     ipcRenderer.on('backend-output', (event, data) => callback(data))
@@ -30,6 +32,8 @@ declare global {
       minimizeWindow: () => Promise<void>
       restartBackend: () => Promise<void>
       sendCommand: (command: string) => Promise<any>
+      toggleAutoHide: () => Promise<boolean>
+      getAutoHideStatus: () => Promise<boolean>
       onBackendOutput: (callback: (data: string) => void) => void
       onBackendError: (callback: (data: string) => void) => void
       onBackendClosed: (callback: (code: number) => void) => void
