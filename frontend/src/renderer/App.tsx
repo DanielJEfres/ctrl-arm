@@ -20,11 +20,15 @@ declare global {
       showConfig: () => Promise<void>
       hideConfig: () => Promise<void>
       getConfig: () => Promise<any>
+      sendVoiceData: (voiceData: any) => Promise<any>
+      sendVoiceStatus: (status: any) => Promise<any>
       onBackendOutput: (callback: (data: string) => void) => void
       onBackendError: (callback: (data: string) => void) => void
       onBackendClosed: (callback: (code: number) => void) => void
       onVisualizerClosed: (callback: () => void) => void
       onConfigClosed: (callback: () => void) => void
+      onVoiceData: (callback: (data: any) => void) => void
+      onVoiceStatus: (callback: (status: any) => void) => void
       removeAllListeners: (channel: string) => void
     }
   }
