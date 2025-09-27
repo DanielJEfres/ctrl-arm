@@ -6,6 +6,10 @@
 # Python backend
 backend/venv/
 backend/__pycache__/
+
+# ADK environment
+ADK/venv/
+ADK/multi_tool_agent/__pycache__/
 *.pyc
 *.pyo
 *.pyd
@@ -22,6 +26,7 @@ venv.bak/
 .env.development.local
 .env.test.local
 .env.production.local
+/ADK/multi_tool_agent/.env
 
 # Node.js / Electron frontend
 frontend/node_modules/
@@ -126,3 +131,5 @@ tmp/
 temp/
 hardware/data/
 backend/ml/models/
+
+SETUP.md

@@ -29,3 +29,6 @@ librosa>=0.9.0
 # model deployment
 onnx>=1.12.0
 onnxruntime>=1.12.0
+
+# adk
+google-adk>=1.15.1
