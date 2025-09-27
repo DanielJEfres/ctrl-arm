@@ -34,6 +34,16 @@
       flex-direction: column;
       overflow: hidden;
       position: relative;
+      transform: translateY(0);
+      transition: transform 0.3s ease-in-out;
+    }
+    
+    .config-window.slide-down {
+      transform: translateY(20px);
+    }
+    
+    .config-window.slide-up {
+      transform: translateY(0);
     }
     
     .config-tab {
@@ -73,6 +83,27 @@
       padding: 16px 20px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
       background: rgba(255, 255, 255, 0.05);
+      position: relative;
+    }
+    
+    .config-notification {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0, 150, 136, 0.9);
+      color: white;
+      padding: 8px 16px;
+      font-size: 12px;
+      font-weight: 500;
+      text-align: center;
+      transform: translateY(-100%);
+      transition: transform 0.3s ease-in-out;
+      z-index: 10;
+    }
+    
+    .config-notification.show {
+      transform: translateY(0);
     }
     
     .config-header h3 {
@@ -113,13 +144,13 @@
     
     .gesture-item {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 12px;
+      flex-direction: column;
+      padding: 12px;
       background: rgba(255, 255, 255, 0.05);
       border-radius: 6px;
       border: 1px solid rgba(255, 255, 255, 0.1);
       transition: all 0.2s ease;
+      margin-bottom: 8px;
     }
     
     .gesture-item:hover {
@@ -127,18 +158,45 @@
       border-color: rgba(255, 255, 255, 0.2);
     }
     
+    .gesture-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    
     .gesture-name {
-      color: rgba(255, 255, 255, 0.8);
-      font-size: 13px;
-      font-weight: 500;
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 14px;
+      font-weight: 600;
       letter-spacing: 0.2px;
     }
     
+    .gesture-status {
+      background: rgba(0, 150, 136, 0.2);
+      color: rgba(0, 150, 136, 0.9);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    
     .gesture-description {
-      color: rgba(255, 255, 255, 0.5);
+      color: rgba(255, 255, 255, 0.6);
       font-size: 11px;
       font-style: italic;
-      margin-left: 8px;
+      margin-bottom: 4px;
+    }
+    
+    .gesture-action {
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 12px;
+      font-weight: 500;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 4px 8px;
+      border-radius: 4px;
+      border-left: 3px solid rgba(0, 150, 136, 0.6);
     }
     
     .mode-list {
@@ -243,6 +301,9 @@
     </div>
     
     <div class="config-header">
+      <div class="config-notification" id="configNotification">
+        Configuration Updated
+      </div>
       <h3>Configuration Viewer</h3>
     </div>
     
@@ -270,22 +331,32 @@
         return;
       }
       
+      // Trigger slide animation
+      triggerConfigAnimation();
+      
       let html = '';
       
       // Gesture Labels Section
       if (config.gesture_labels && config.gesture_labels.length > 0) {
         html += `
           <div class="config-section">
-            <h4>Gesture Labels</h4>
+            <h4>Current Gesture Actions</h4>
             <div class="gesture-list">
         `;
         
         config.gesture_labels.forEach((gesture, index) => {
           const description = getGestureDescription(gesture);
+          const action = getGestureAction(gesture, config);
+          const status = getGestureStatus(gesture);
+          
           html += `
             <div class="gesture-item">
-              <span class="gesture-name">${gesture}</span>
-              <span class="gesture-description">${description}</span>
+              <div class="gesture-header">
+                <span class="gesture-name">${gesture.replace('_', ' ')}</span>
+                <span class="gesture-status">${status}</span>
+              </div>
+              <div class="gesture-description">${description}</div>
+              <div class="gesture-action">${action}</div>
             </div>
           `;
         });
@@ -372,6 +443,27 @@
       content.innerHTML = html;
     }
     
+    function triggerConfigAnimation() {
+      const window = document.querySelector('.config-window');
+      const notification = document.getElementById('configNotification');
+      
+      // Slide down animation
+      window.classList.add('slide-down');
+      notification.classList.add('show');
+      
+      // After slide down, slide back up
+      setTimeout(() => {
+        window.classList.remove('slide-down');
+        window.classList.add('slide-up');
+      }, 150);
+      
+      // Hide notification after animation
+      setTimeout(() => {
+        notification.classList.remove('show');
+        window.classList.remove('slide-up');
+      }, 2000);
+    }
+    
     function getGestureDescription(gesture) {
       const descriptions = {
         'rest': 'No muscle activity',
@@ -390,6 +482,43 @@
       return descriptions[gesture] || 'Custom gesture';
     }
     
+    function getGestureAction(gesture, config) {
+      const actions = {
+        'rest': 'No action - System idle',
+        'left_single': 'Open application launcher',
+        'right_single': 'Toggle window focus',
+        'left_double': 'Switch to previous workspace',
+        'right_double': 'Switch to next workspace',
+        'left_hold': 'Activate voice commands',
+        'right_hold': 'Show system notifications',
+        'both_flex': 'Emergency stop / System lock',
+        'left_then_right': 'Take screenshot',
+        'right_then_left': 'Record screen',
+        'left_hard': 'Volume up',
+        'right_hard': 'Volume down'
+      };
+      return actions[gesture] || 'Custom action mapped';
+    }
+    
+    function getGestureStatus(gesture) {
+      // Simulate different statuses based on gesture type
+      const statuses = {
+        'rest': 'idle',
+        'left_single': 'active',
+        'right_single': 'active',
+        'left_double': 'active',
+        'right_double': 'active',
+        'left_hold': 'active',
+        'right_hold': 'active',
+        'both_flex': 'critical',
+        'left_then_right': 'active',
+        'right_then_left': 'active',
+        'left_hard': 'active',
+        'right_hard': 'active'
+      };
+      return statuses[gesture] || 'unknown';
+    }
+    
     // Load config when window opens
     if (window.electronAPI) {
       window.electronAPI.getConfig().then(config => {
@@ -398,6 +527,22 @@
         console.error('Failed to load config:', error);
         document.getElementById('configContent').innerHTML = '<div class="error-text">Failed to load configuration</div>';
       });
+      
+      // Check for config changes every 5 seconds
+      setInterval(() => {
+        window.electronAPI.getConfig().then(newConfig => {
+          // Compare with current config to detect changes
+          const currentContent = document.getElementById('configContent').innerHTML;
+          if (currentContent.includes('Current Gesture Actions')) {
+            // Trigger animation to show config was updated
+            triggerConfigAnimation();
+            // Re-render with new config
+            renderConfig(newConfig);
+          }
+        }).catch(error => {
+          console.error('Failed to reload config:', error);
+        });
+      }, 5000);
     }
   </script>
 </body>
