@@ -439,21 +439,23 @@
     }
     
     function getGestureAction(gesture, config) {
-      const actions = {
-        'rest': 'Idle',
-        'left_single': 'App Launcher',
-        'right_single': 'Toggle Window',
-        'left_double': 'Prev Workspace',
-        'right_double': 'Next Workspace',
-        'left_hold': 'Voice Commands',
-        'right_hold': 'Notifications',
-        'both_flex': 'Emergency Stop',
-        'left_then_right': 'Screenshot',
-        'right_then_left': 'Screen Record',
-        'left_hard': 'Volume Up',
-        'right_hard': 'Volume Down'
-      };
-      return actions[gesture] || 'Custom Action';
+      if (!config || !config.current_keys) {
+        return 'No Config';
+      }
+      
+      const key = config.current_keys[gesture];
+      if (!key) {
+        return 'Idle';
+      }
+      
+      // Format the key for display
+      if (key.includes('+')) {
+        return key.toUpperCase();
+      } else if (key.length === 1) {
+        return key.toUpperCase();
+      } else {
+        return key.charAt(0).toUpperCase() + key.slice(1);
+      }
     }
     
     function getGestureStatus(gesture) {

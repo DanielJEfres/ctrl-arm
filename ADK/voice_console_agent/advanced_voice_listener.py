@@ -120,15 +120,23 @@ def process_gesture_command(command):
     if not gesture_mapper:
         return f"Voice command received: {command} (gesture mapper not available)"
     
-    if "set mode to" in command or "switch to" in command:
+    print(f"[advanced_voice_listener] Processing command: '{command}'")
+    
+    if "set mode to" in command or "switch to" in command or "change mode to" in command:
+        print(f"[advanced_voice_listener] Mode change command detected")
         for mode in ["work_mode", "game_mode", "creative_mode", "default_mode"]:
             if mode.replace("_", " ") in command or mode in command:
+                print(f"[advanced_voice_listener] Found mode: {mode}")
                 try:
                     gesture_mapper.set_current_keys_from_mode(mode)
                     gesture_mapper.save_config()
+                    print(f"[advanced_voice_listener] Successfully switched to {mode}")
                     return f"Switched to {mode} and updated gesture keys"
                 except Exception as e:
+                    print(f"[advanced_voice_listener] Error switching to {mode}: {e}")
                     return f"Error switching to {mode}: {e}"
+    
+    print(f"[advanced_voice_listener] No mode change pattern matched")
     
     gesture_phrases = {
         "left single": "left_single",
