@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   toggleAutoHide: () => ipcRenderer.invoke('toggle-auto-hide'),
   getAutoHideStatus: () => ipcRenderer.invoke('get-auto-hide-status'),
   showVisualizer: () => ipcRenderer.invoke('show-visualizer'),
+  showEMGVisualizer: () => ipcRenderer.invoke('show-emg-visualizer'),
   hideVisualizer: () => ipcRenderer.invoke('hide-visualizer'),
   showConfig: () => ipcRenderer.invoke('show-config'),
   hideConfig: () => ipcRenderer.invoke('hide-config'),
@@ -54,6 +55,7 @@ declare global {
       toggleAutoHide: () => Promise<boolean>
       getAutoHideStatus: () => Promise<boolean>
       showVisualizer: () => Promise<void>
+      showEMGVisualizer: () => Promise<void>
       hideVisualizer: () => Promise<void>
       showConfig: () => Promise<void>
       hideConfig: () => Promise<void>

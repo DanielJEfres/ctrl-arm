@@ -103,6 +103,9 @@ function createWindow() {
 
   mainWindow.loadURL('http://localhost:5174')
 
+  // set highest window level for windows 11 compatibility
+  mainWindow.setAlwaysOnTop(true, 'screen-saver')
+  mainWindow.setVisibleOnAllWorkspaces(true)
   mainWindow.setIgnoreMouseEvents(false)
 
   if (isAutoHideEnabled) {
@@ -371,6 +374,9 @@ function startSidebarHoverTimer() {
                 const { height: screenHeight } = primaryDisplay.bounds
                 visualizerWindow.setPosition(-400, Math.floor((screenHeight - 600) / 2))
                 visualizerWindow.show()
+                // set highest window level for windows 11 compatibility
+                visualizerWindow.setAlwaysOnTop(true, 'screen-saver')
+                visualizerWindow.setVisibleOnAllWorkspaces(true)
                 animateSidebarToPosition(visualizerWindow, 0, Math.floor((screenHeight - 600) / 2))
                 return
               }
@@ -400,6 +406,10 @@ function startSidebarHoverTimer() {
               })
               
               visualizerWindow.show()
+              
+              // set highest window level for windows 11 compatibility
+              visualizerWindow.setAlwaysOnTop(true, 'screen-saver')
+              visualizerWindow.setVisibleOnAllWorkspaces(true)
               
               animateSidebarToPosition(visualizerWindow, 0, Math.floor((screenHeight - 600) / 2))
               
@@ -445,6 +455,9 @@ function startSidebarHoverTimer() {
                 const { width: screenWidth, height: screenHeight } = primaryDisplay.bounds
                 configWindow.setPosition(screenWidth, Math.floor((screenHeight - 750) / 2))
                 configWindow.show()
+                // set highest window level for windows 11 compatibility
+                configWindow.setAlwaysOnTop(true, 'screen-saver')
+                configWindow.setVisibleOnAllWorkspaces(true)
                 animateSidebarToPosition(configWindow, screenWidth - 250, Math.floor((screenHeight - 750) / 2))
                 return
               }
@@ -474,6 +487,10 @@ function startSidebarHoverTimer() {
               })
               
               configWindow.show()
+              
+              // set highest window level for windows 11 compatibility
+              configWindow.setAlwaysOnTop(true, 'screen-saver')
+              configWindow.setVisibleOnAllWorkspaces(true)
               
               setTimeout(() => {
                 animateSidebarToPosition(configWindow, screenWidth - 250, Math.floor((screenHeight - 750) / 2))
@@ -625,6 +642,57 @@ ipcMain.handle('get-auto-hide-status', () => {
   return isAutoHideEnabled
 })
 
+ipcMain.handle('show-emg-visualizer', () => {
+  console.log('show-emg-visualizer IPC handler called')
+  if (visualizerWindow) {
+    console.log('EMG Visualizer window already exists, showing it')
+    visualizerWindow.show()
+    visualizerWindow.focus()
+    return
+  }
+  
+  console.log('Creating new EMG visualizer window')
+  const primaryDisplay = screen.getPrimaryDisplay()
+  const { width: screenWidth, height: screenHeight } = primaryDisplay.bounds
+  
+  visualizerWindow = new BrowserWindow({
+    width: Math.floor(screenWidth * 0.8),
+    height: Math.floor(screenHeight * 0.8),
+    x: Math.floor(screenWidth * 0.1),
+    y: Math.floor(screenHeight * 0.1),
+    frame: false,
+    transparent: false,
+    alwaysOnTop: true,
+    skipTaskbar: false,
+    resizable: true,
+    movable: true,
+    show: true,
+    focusable: true,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: join(__dirname, 'preload.js')
+    },
+    backgroundColor: '#000000',
+    titleBarStyle: 'hidden'
+  })
+  
+  // set highest window level for windows 11 compatibility
+  visualizerWindow.setAlwaysOnTop(true, 'screen-saver')
+  visualizerWindow.setVisibleOnAllWorkspaces(true)
+  visualizerWindow.focus()
+  
+  // Load the visualizer HTML directly
+  visualizerWindow.loadURL('http://localhost:5174/visualizer')
+  
+  visualizerWindow.on('closed', () => {
+    visualizerWindow = null
+    if (mainWindow) {
+      mainWindow.webContents.send('visualizer-closed')
+    }
+  })
+})
+
 ipcMain.handle('show-visualizer', () => {
   console.log('show-visualizer IPC handler called')
   if (visualizerWindow) {
@@ -735,6 +803,11 @@ ipcMain.handle('show-config', () => {
   
   configWindow.show()
   console.log('Config window shown immediately')
+  
+  // set highest window level for windows 11 compatibility
+  configWindow.setAlwaysOnTop(true, 'screen-saver')
+  configWindow.setVisibleOnAllWorkspaces(true)
+  configWindow.focus()
   
   animateSidebarToPosition(configWindow, screenWidth - 250, Math.floor((screenHeight - 600) / 2))
   

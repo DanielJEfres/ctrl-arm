@@ -1,7 +1,3 @@
-"""
-train decision tree model from collected emg data
-"""
-
 import pandas as pd
 import numpy as np
 from pathlib import Path
