@@ -381,6 +381,17 @@ def run_standalone_voice_mode():
     finally:
         print("[voice_console_agent] Stopping voice detection")
         stop_watching()
+        
+
+def _auto_mode_thread():
+    from google.adk import AgentClient 
+    client = AgentClient("context_agent")  
+    while True:
+        result = client.call("await_context_change", {"timeout_s": 10.0})
+        if result.get("changed"):
+            name = result.get("name")
+            suggestion = client.call("suggest_mode_for_current_app", {})
+
 
 if __name__ == "__main__" or "--standalone" in sys.argv:
     if _is_watching:
