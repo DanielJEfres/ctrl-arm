@@ -5,6 +5,7 @@ pyserial>=3.5
 numpy>=1.20.0
 pandas>=1.5.0
 PyYAML>=6.0
+pyautogui>=0.9.54
 
 # ml pipeline
 torch>=2.0.0

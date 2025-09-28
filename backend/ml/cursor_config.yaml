@@ -1,0 +1,32 @@
+# Enhanced EMG + IMU Cursor Control Configuration
+
+# Cursor Control Settings
+cursor:
+  enabled: true                    # Enable/disable cursor control
+  sensitivity: 2.0                 # Higher = faster cursor movement (1.0-5.0)
+  deadzone: 0.05                   # Minimum movement to register (0.01-0.2)
+  smoothing_factor: 0.3            # Higher = smoother, lower = more responsive (0.1-0.8)
+  update_fps: 60                   # Target FPS for cursor updates (30-120)
+  
+# IMU Calibration
+imu:
+  calibration_duration: 3          # Seconds to calibrate IMU baseline
+  auto_recalibrate: false          # Automatically recalibrate if drift detected
+  
+# EMG Settings (inherited from existing system)
+emg:
+  activation_threshold: 40         # Will be auto-adjusted during calibration
+  strong_threshold: 200            # Will be auto-adjusted during calibration
+  noise_multiplier: 3              # Multiplier for noise-based threshold adjustment
+  
+# Display Settings
+display:
+  show_cursor_velocity: true       # Show cursor velocity in status display
+  show_imu_data: false            # Show raw IMU data (for debugging)
+  status_update_interval: 0.15    # Seconds between status updates
+  
+# Advanced Settings
+advanced:
+  cursor_velocity_decay: 0.95      # How quickly cursor velocity decays (0.8-0.99)
+  max_cursor_velocity: 10.0        # Maximum cursor velocity (pixels per frame)
+  gesture_cursor_conflict: false   # Allow gestures while cursor is moving
