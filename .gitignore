@@ -135,9 +135,8 @@ backend/ml/models/
 SETUP.md
 data/processed/
 
-<<<<<<< Updated upstream
 # Output
 output/
-=======
  frontend/pnpm-lock.yaml
->>>>>>> Stashed changes
+
+config.yaml
