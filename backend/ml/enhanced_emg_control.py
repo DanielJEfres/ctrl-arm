@@ -18,7 +18,7 @@ pyautogui.PAUSE = 0.001
 class EnhancedEMGController:
     def __init__(self):
         print("\n" + "="*60)
-        print(" "*15 + "ENHANCED EMG + IMU CONTROL")
+        print(" "*15 + "enhanced emg + imu control")
         print("="*60)
 
         self.serial_conn = None
@@ -68,10 +68,10 @@ class EnhancedEMGController:
         self.threshold_count = 0
         self.ml_count = 0
         
-        # IMU cursor control settings
-        self.cursor_sensitivity = 2.0  # Adjust this for cursor speed
-        self.cursor_deadzone = 0.05   # Minimum movement to register
-        self.cursor_smoothing_factor = 0.3  # Higher = smoother, lower = more responsive
+        # imu cursor control settings
+        self.cursor_sensitivity = 25.0  # much higher for actual movement
+        self.cursor_deadzone = 0.008   # very small deadzone
+        self.cursor_smoothing_factor = 0.6  # slightly smoother for control
         
         # IMU calibration
         self.imu_baseline = {'accel_x': 0, 'accel_y': 0, 'accel_z': 0}
@@ -86,6 +86,18 @@ class EnhancedEMGController:
         self.cursor_velocity = {'x': 0, 'y': 0}
         self.cursor_position = {'x': 0, 'y': 0}
         self.target_cursor_velocity = {'x': 0, 'y': 0}
+        
+        # drift compensation
+        self.drift_samples = []  # to detect and compensate for drift
+        self.drift_compensation = {'x': 0, 'y': 0, 'z': 0}
+        
+        # click intent detection for cursor smoothing
+        self.click_intent_threshold = 0.3  # seconds of low movement to detect click intent
+        self.click_intent_movement_threshold = 2.0  # pixels per second to consider "trying to click"
+        self.movement_history = deque(maxlen=30)  # track recent movements
+        self.cursor_slowdown_factor = 0.1  # how much to slow cursor during click intent
+        self.last_movement_time = time.time()
+        self.click_intent_active = False
 
     def load_model(self):
         """Load the existing EMG decision tree model"""
@@ -96,24 +108,24 @@ class EnhancedEMGController:
                     data = pickle.load(f)
                     self.decision_tree = data['model']
                     self.scaler = data['scaler']
-                    print("✓ Loaded decision tree model for EMG gestures")
+                    print("loaded decision tree model for emg gestures")
             except Exception as e:
-                print(f"✗ Failed to load ML model: {e}")
+                print(f"failed to load ml model: {e}")
                 self.decision_tree = None
         else:
-            print("⚠ Using threshold detection only for EMG gestures")
+            print("using threshold detection only for emg gestures")
             self.decision_tree = None
 
     def connect_device(self):
         """Connect to the XIAO device"""
-        print("\n🔌 Connecting to device...")
+        print("\nconnecting to device...")
 
         ports = list(serial.tools.list_ports.comports())
         if not ports:
-            print("❌ No devices found!")
+            print("no devices found!")
             return False
 
-        print("📋 Available ports:")
+        print("available ports:")
         for i, p in enumerate(ports):
             print(f"   {i+1}. {p.device} - {p.description}")
 
@@ -123,12 +135,12 @@ class EnhancedEMGController:
         for p in ports:
             if any(x in p.description.lower() for x in ['xiao', 'arduino', 'usb serial', 'usb-serial', 'ch340', 'cp210', 'ftdi']):
                 port = p.device
-                print(f"🎯 Found potential device: {p.device} - {p.description}")
+                print(f"found potential device: {p.device} - {p.description}")
                 break
 
         # If no specific device found, let user choose
         if not port:
-            print("\n🤔 No XIAO/Arduino device auto-detected.")
+            print("\nno xiao/arduino device auto-detected.")
             print("Please select a port:")
             for i, p in enumerate(ports):
                 print(f"   {i+1}. {p.device} - {p.description}")
@@ -144,27 +156,27 @@ class EnhancedEMGController:
                         port = ports[choice_num - 1].device
                         break
                     else:
-                        print(f"❌ Please enter a number between 1 and {len(ports)}")
+                        print(f"please enter a number between 1 and {len(ports)}")
                 except ValueError:
-                    print("❌ Please enter a valid number")
+                    print("please enter a valid number")
                 except KeyboardInterrupt:
-                    print("\n👋 Exiting...")
+                    print("\nexiting...")
                     return False
 
-        print(f"\n🔗 Attempting to connect to {port}...")
+        print(f"\nattempting to connect to {port}...")
 
         try:
             self.serial_conn = serial.Serial(port, 115200, timeout=0.01)
             time.sleep(2)  # Give more time for connection
 
             # Clear any existing data
-            print("🧹 Clearing buffer...")
+            print("clearing buffer...")
             time.sleep(0.5)
             while self.serial_conn.in_waiting:
                 self.serial_conn.readline()
 
-            print(f"✓ Connected to {port}")
-            print("📡 Waiting for data...")
+            print(f"connected to {port}")
+            print("waiting for data...")
             
             # Test if we're getting data
             test_start = time.time()
@@ -172,26 +184,26 @@ class EnhancedEMGController:
                 if self.serial_conn.in_waiting:
                     line = self.serial_conn.readline().decode('utf-8', errors='ignore').strip()
                     if line and not line.startswith('#'):
-                        print(f"📊 Sample data: {line[:50]}...")
+                        print(f"sample data: {line[:50]}...")
                         return True
                 time.sleep(0.1)
             
-            print("⚠️  No data received. Check if XIAO is running the correct firmware.")
+            print("no data received. check if xiao is running the correct firmware.")
             return True  # Still return True, might work during calibration
 
         except Exception as e:
-            print(f"❌ Connection failed: {e}")
-            print("\n🔧 Troubleshooting tips:")
-            print("   • Check USB cable connection")
-            print("   • Verify XIAO Sense is powered on")
-            print("   • Try a different USB port")
-            print("   • Make sure Arduino firmware is uploaded")
-            print("   • Check if another program is using the port")
+            print(f"connection failed: {e}")
+            print("\ntroubleshooting tips:")
+            print("   - check usb cable connection")
+            print("   - verify xiao sense is powered on")
+            print("   - try a different usb port")
+            print("   - make sure arduino firmware is uploaded")
+            print("   - check if another program is using the port")
             return False
 
     def calibrate_emg(self):
         """Calibrate EMG sensors for personalized thresholds"""
-        print("\n📊 EMG Calibration")
+        print("\nemg calibration")
         print("-" * 40)
         print("Keep arms relaxed for 2 seconds...")
         
@@ -223,7 +235,7 @@ class EnhancedEMGController:
             self.noise_left = np.std(baseline_data_left)
             self.noise_right = np.std(baseline_data_right)
 
-            print(f"\n✓ EMG Calibration complete!")
+            print(f"\nemg calibration complete")
             print(f"   Left:  {self.baseline_left:.0f} ± {self.noise_left:.0f}")
             print(f"   Right: {self.baseline_right:.0f} ± {self.noise_right:.0f}")
 
@@ -234,12 +246,12 @@ class EnhancedEMGController:
 
             return True
         else:
-            print("❌ EMG calibration failed - no data")
+            print("emg calibration failed - no data")
             return False
 
     def calibrate_imu(self):
         """Calibrate IMU for cursor control"""
-        print("\n🎯 IMU Calibration for Cursor Control")
+        print("\nimu calibration for cursor control")
         print("-" * 40)
         print("Sit in neutral position (chest straight) for 3 seconds...")
         
@@ -266,24 +278,31 @@ class EnhancedEMGController:
                     pass
 
         if imu_data['accel_x']:
-            self.imu_baseline['accel_x'] = np.mean(imu_data['accel_x'])
-            self.imu_baseline['accel_y'] = np.mean(imu_data['accel_y'])
-            self.imu_baseline['accel_z'] = np.mean(imu_data['accel_z'])
+            # calculate baseline with better averaging
+            self.imu_baseline['accel_x'] = np.median(imu_data['accel_x'])  # use median to reduce outliers
+            self.imu_baseline['accel_y'] = np.median(imu_data['accel_y'])
+            self.imu_baseline['accel_z'] = np.median(imu_data['accel_z'])
             
-            print(f"\n✓ IMU Calibration complete!")
-            print(f"   X: {self.imu_baseline['accel_x']:.3f}")
-            print(f"   Y: {self.imu_baseline['accel_y']:.3f}")
-            print(f"   Z: {self.imu_baseline['accel_z']:.3f}")
-            print("\n🎮 Cursor Control Mapping:")
-            print("   Lean forward  → Move cursor up")
-            print("   Lean backward → Move cursor down")
-            print("   Lean left     → Move cursor left")
-            print("   Lean right    → Move cursor right")
+            # calculate noise levels for adaptive deadzones
+            self.drift_compensation['x'] = np.std(imu_data['accel_x'])
+            self.drift_compensation['y'] = np.std(imu_data['accel_y'])
+            self.drift_compensation['z'] = np.std(imu_data['accel_z'])
+            
+            print(f"\nimu calibration complete")
+            print(f"   X: {self.imu_baseline['accel_x']:.3f} (noise: {self.drift_compensation['x']:.4f})")
+            print(f"   Y: {self.imu_baseline['accel_y']:.3f} (noise: {self.drift_compensation['y']:.4f})")
+            print(f"   Z: {self.imu_baseline['accel_z']:.3f} (noise: {self.drift_compensation['z']:.4f})")
+            print("\ncursor control mapping (flight controls):")
+            print("   lean forward  -> move cursor down (like pushing stick forward)")
+            print("   lean backward -> move cursor up (like pulling stick back)")
+            print("   lean left     -> move cursor left")
+            print("   lean right    -> move cursor right")
+            print("   automatic slowdown when trying to click")
             
             self.imu_calibrated = True
             return True
         else:
-            print("❌ IMU calibration failed - no data")
+            print("imu calibration failed - no data")
             return False
 
     def extract_features(self, emg1_window, emg2_window):
@@ -358,44 +377,89 @@ class EnhancedEMGController:
             return 'both_flex'
 
     def calculate_cursor_movement(self, accel_x, accel_y, accel_z):
-        """Calculate cursor movement based on IMU data"""
+        # calculate cursor movement based on imu data
         if not self.imu_calibrated:
             return 0, 0
         
-        # Calculate deviation from baseline
+        # calculate deviation from baseline
         delta_x = accel_x - self.imu_baseline['accel_x']
         delta_y = accel_y - self.imu_baseline['accel_y']
         delta_z = accel_z - self.imu_baseline['accel_z']
         
-        # Map IMU to cursor movement
-        # X-axis: left/right lean -> cursor left/right
-        # Y-axis: forward/back lean -> cursor up/down (inverted for natural feel)
-        cursor_delta_x = delta_x * self.cursor_sensitivity
-        cursor_delta_y = -delta_y * self.cursor_sensitivity  # Inverted for natural feel
+        # flight controls mapping:
+        # left/right: delta_y controls horizontal (working well)
+        # forward/backward: delta_z controls vertical BUT INVERTED for flight controls
+        # lean forward (positive delta_z) -> cursor moves DOWN (like pushing stick forward)
+        # lean backward (negative delta_z) -> cursor moves UP (like pulling stick back)
+        cursor_delta_x = delta_y * self.cursor_sensitivity  # y controls horizontal
+        cursor_delta_y = delta_z * self.cursor_sensitivity  # z for vertical (flight style - forward=down)
         
-        # Apply deadzone
-        if abs(cursor_delta_x) < self.cursor_deadzone:
+        # apply deadzone with scaling to make small movements more responsive
+        if abs(delta_y) < self.cursor_deadzone:
             cursor_delta_x = 0
-        if abs(cursor_delta_y) < self.cursor_deadzone:
+        else:
+            # scale up small movements
+            sign_x = 1 if cursor_delta_x > 0 else -1
+            cursor_delta_x = sign_x * max(abs(cursor_delta_x), 0.5)
+            
+        if abs(delta_z) < self.cursor_deadzone:
             cursor_delta_y = 0
+        else:
+            # scale up small movements
+            sign_y = 1 if cursor_delta_y > 0 else -1
+            cursor_delta_y = sign_y * max(abs(cursor_delta_y), 0.5)
         
         return cursor_delta_x, cursor_delta_y
 
+    def detect_click_intent(self, delta_x, delta_y):
+        # detect if user is trying to click (low movement for a period)
+        current_time = time.time()
+        movement_magnitude = abs(delta_x) + abs(delta_y)
+        
+        # add current movement to history with timestamp
+        self.movement_history.append((current_time, movement_magnitude))
+        
+        # calculate average movement over last 0.3 seconds
+        recent_movements = [(t, m) for t, m in self.movement_history if current_time - t <= self.click_intent_threshold]
+        
+        if len(recent_movements) > 5:  # need some samples
+            avg_movement = sum(m for t, m in recent_movements) / len(recent_movements)
+            
+            # if average movement is low, user might be trying to click
+            if avg_movement < self.click_intent_movement_threshold:
+                self.click_intent_active = True
+                return True
+            else:
+                self.click_intent_active = False
+                return False
+        
+        self.click_intent_active = False
+        return False
+    
     def smooth_cursor_movement(self, target_x, target_y):
-        """Apply smoothing to cursor movement for natural feel"""
-        # Update target velocity
+        # apply smoothing to cursor movement for natural feel
+        # check for click intent and slow down cursor if detected
+        click_intent = self.detect_click_intent(target_x, target_y)
+        
+        # apply slowdown if user is trying to click
+        if click_intent:
+            target_x *= self.cursor_slowdown_factor
+            target_y *= self.cursor_slowdown_factor
+        
+        # update target velocity
         self.target_cursor_velocity['x'] = target_x
         self.target_cursor_velocity['y'] = target_y
         
-        # Smooth velocity changes
-        self.cursor_velocity['x'] += (self.target_cursor_velocity['x'] - self.cursor_velocity['x']) * self.cursor_smoothing_factor
-        self.cursor_velocity['y'] += (self.target_cursor_velocity['y'] - self.cursor_velocity['y']) * self.cursor_smoothing_factor
+        # smooth velocity changes with higher responsiveness
+        smoothing = self.cursor_smoothing_factor
+        if click_intent:
+            smoothing *= 2.0  # extra smoothing during click intent
+            
+        self.cursor_velocity['x'] += (self.target_cursor_velocity['x'] - self.cursor_velocity['x']) * smoothing
+        self.cursor_velocity['y'] += (self.target_cursor_velocity['y'] - self.cursor_velocity['y']) * smoothing
         
-        # Update position
-        self.cursor_position['x'] += self.cursor_velocity['x']
-        self.cursor_position['y'] += self.cursor_velocity['y']
-        
-        return self.cursor_position['x'], self.cursor_position['y']
+        # return velocity directly for more immediate response
+        return self.cursor_velocity['x'], self.cursor_velocity['y']
 
     def update_cursor(self, accel_x, accel_y, accel_z):
         """Update cursor position based on IMU data"""
@@ -412,15 +476,18 @@ class EnhancedEMGController:
         # Apply smoothing
         smooth_delta_x, smooth_delta_y = self.smooth_cursor_movement(raw_delta_x, raw_delta_y)
         
-        # Move cursor if there's significant movement
-        if abs(smooth_delta_x) > 0.1 or abs(smooth_delta_y) > 0.1:
+        # move cursor with very low threshold for responsiveness
+        if abs(smooth_delta_x) > 0.001 or abs(smooth_delta_y) > 0.001:
             try:
                 current_x, current_y = pyautogui.position()
-                new_x = max(0, min(pyautogui.size().width, current_x + smooth_delta_x))
-                new_y = max(0, min(pyautogui.size().height, current_y + smooth_delta_y))
-                pyautogui.moveTo(new_x, new_y)
+                # direct movement without extra scaling
+                move_x = smooth_delta_x
+                move_y = smooth_delta_y
+                new_x = max(0, min(pyautogui.size().width - 1, current_x + move_x))
+                new_y = max(0, min(pyautogui.size().height - 1, current_y + move_y))
+                pyautogui.moveTo(new_x, new_y, duration=0)  # instant movement
             except:
-                pass  # Ignore cursor movement errors
+                pass  # ignore cursor movement errors
         
         self.last_cursor_time = current_time
 
@@ -482,7 +549,7 @@ class EnhancedEMGController:
 
     def process_data(self):
         """Main data processing loop"""
-        print("\n🎮 Enhanced Control Active")
+        print("\nenhanced control active")
         print("-" * 60)
 
         last_display_time = time.time()
@@ -520,10 +587,11 @@ class EnhancedEMGController:
                             left_bar = "=" * min(10, int(left_activity / 10))
                             right_bar = "=" * min(10, int(right_activity / 10))
                             
-                            # Show cursor velocity
-                            cursor_info = f"Cursor: {self.cursor_velocity['x']:+.1f},{self.cursor_velocity['y']:+.1f}"
+                            # show cursor velocity and click intent status
+                            cursor_info = f"cursor: {self.cursor_velocity['x']:+.1f},{self.cursor_velocity['y']:+.1f}"
+                            click_status = " [click-intent]" if self.click_intent_active else ""
                             
-                            status = f"\rEMG L:{left_activity:+4.0f} {left_bar:10s} | R:{right_activity:+4.0f} {right_bar:10s} | [{gesture:12s}] | {cursor_info}"
+                            status = f"\remg l:{left_activity:+4.0f} {left_bar:10s} | r:{right_activity:+4.0f} {right_bar:10s} | [{gesture:12s}] | {cursor_info}{click_status}"
                             
                             print(status, end='', flush=True)
                             last_display_time = current_time
@@ -542,7 +610,7 @@ class EnhancedEMGController:
 
     def show_stats(self):
         """Display session statistics"""
-        print("\n\n📊 Session Statistics")
+        print("\n\nsession statistics")
         print("-" * 60)
 
         if self.gesture_counts:
@@ -564,7 +632,7 @@ class EnhancedEMGController:
     def run(self):
         """Main run function"""
         if not self.serial_conn:
-            print("❌ No device connected!")
+            print("no device connected")
             return
 
         # Calibrate both EMG and IMU
@@ -575,30 +643,32 @@ class EnhancedEMGController:
             return
 
         print("\n" + "="*60)
-        print("🎮 ENHANCED GESTURE + CURSOR CONTROLS")
+        print("enhanced gesture + cursor controls")
         print("="*60)
-        print("EMG Gestures:")
-        print("  Light flex left  → Left click")
-        print("  Light flex right → Right click")
-        print("  Both light flex  → Double click")
-        print("  Strong left      → Scroll up")
-        print("  Strong right     → Scroll down")
-        print("  Both strong      → Middle click")
-        print("\nCursor Control:")
-        print("  Lean forward  → Move cursor up")
-        print("  Lean backward → Move cursor down")
-        print("  Lean left     → Move cursor left")
-        print("  Lean right    → Move cursor right")
-        print("\nSystem:")
+        print("emg gestures:")
+        print("  light flex left  -> left click")
+        print("  light flex right -> right click")
+        print("  both light flex  -> double click")
+        print("  strong left      -> scroll up")
+        print("  strong right     -> scroll down")
+        print("  both strong      -> middle click")
+        print("\ncursor control (flight style):")
+        print("  lean forward  -> move cursor down")
+        print("  lean backward -> move cursor up")
+        print("  lean left     -> move cursor left")
+        print("  lean right    -> move cursor right")
+        print("  auto-slowdown when click detected")
+        print("\nsystem:")
         if self.decision_tree:
-            print("  ✓ Using decision tree for complex EMG gestures")
-            print("  ✓ Using thresholds for simple EMG gestures")
+            print("  using decision tree for complex emg gestures")
+            print("  using thresholds for simple emg gestures")
         else:
-            print("  ⚠ Using threshold detection only for EMG")
-        print("  ✓ IMU-based cursor control enabled")
-        print("  ✓ Latency ~30ms for gestures, ~16ms for cursor")
-        print("\n⚠️  Move mouse to corner to stop")
-        print("Press Ctrl+C to exit")
+            print("  using threshold detection only for emg")
+        print("  imu-based cursor control enabled")
+        print("  latency ~30ms for gestures, ~16ms for cursor")
+        print("  flight controls with click-intent smoothing")
+        print("\nmove mouse to corner to stop")
+        print("press ctrl+c to exit")
         print("="*60)
 
         self.is_running = True
@@ -610,7 +680,7 @@ class EnhancedEMGController:
         try:
             self.process_data()
         except KeyboardInterrupt:
-            print("\n\n🛑 Stopping...")
+            print("\n\nstopping...")
         finally:
             self.is_running = False
             self.show_stats()
@@ -618,7 +688,7 @@ class EnhancedEMGController:
             if self.serial_conn:
                 self.serial_conn.close()
 
-            print("\n✅ Enhanced control stopped!")
+            print("\nenhanced control stopped")
 
 def main():
     """Main entry point"""
