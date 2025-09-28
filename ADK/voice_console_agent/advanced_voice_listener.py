@@ -74,7 +74,6 @@ def set_voice_status(status):
     _voice_status = status
     print(f"[Status] {status}")
     
-    # Send status to visualizer
     if "Listening" in status:
         send_voice_status("listening", status)
     elif "Processing" in status:
@@ -124,9 +123,17 @@ def process_gesture_command(command):
     
     if "set mode to" in command or "switch to" in command or "change mode to" in command:
         print(f"[advanced_voice_listener] Mode change command detected")
+        
+        mode_mappings = {
+            "work": "work_mode",
+            "game": "game_mode", 
+            "creative": "creative_mode",
+            "default": "default_mode"
+        }
+        
         for mode in ["work_mode", "game_mode", "creative_mode", "default_mode"]:
             if mode.replace("_", " ") in command or mode in command:
-                print(f"[advanced_voice_listener] Found mode: {mode}")
+                print(f"[advanced_voice_listener] Found exact mode: {mode}")
                 try:
                     gesture_mapper.set_current_keys_from_mode(mode)
                     gesture_mapper.save_config()
@@ -135,6 +142,18 @@ def process_gesture_command(command):
                 except Exception as e:
                     print(f"[advanced_voice_listener] Error switching to {mode}: {e}")
                     return f"Error switching to {mode}: {e}"
+        
+        for partial, full_mode in mode_mappings.items():
+            if partial in command:
+                print(f"[advanced_voice_listener] Found partial mode '{partial}', mapping to {full_mode}")
+                try:
+                    gesture_mapper.set_current_keys_from_mode(full_mode)
+                    gesture_mapper.save_config()
+                    print(f"[advanced_voice_listener] Successfully switched to {full_mode}")
+                    return f"Switched to {full_mode} and updated gesture keys"
+                except Exception as e:
+                    print(f"[advanced_voice_listener] Error switching to {full_mode}: {e}")
+                    return f"Error switching to {full_mode}: {e}"
     
     print(f"[advanced_voice_listener] No mode change pattern matched")
     
@@ -183,7 +202,6 @@ def execute_command(command):
     command = normalize_command(command)
     set_voice_status(f"Processing: {command}")
     
-    # Send detected text to visualizer
     send_voice_data(command)
     
     if "stop listening" in command or "exit" in command or "quit" in command:
@@ -194,7 +212,6 @@ def execute_command(command):
     result = process_gesture_command(command)
     set_voice_status(result)
     
-    # Send response to visualizer
     send_voice_data(command, result)
     
     time.sleep(1)
@@ -213,7 +230,6 @@ def listen_and_execute():
     print("[advanced_voice_listener] Ready! Say 'Gemini' followed by your command.")
     set_voice_status("Listening for 'Gemini'...")
     
-    # Send initial status to visualizer
     send_voice_status("listening", "Listening for 'Gemini'...")
     
     wake_word_detected = False

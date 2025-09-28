@@ -22,12 +22,9 @@ class GestureKeyMapper:
         self.current_mode = self.config.get("active_profile", "default_mode")
 
     def save_config(self) -> bool:
-        import tempfile, shutil
         try:
-            tmp = tempfile.NamedTemporaryFile(delete=False, dir=os.path.dirname(self.config_path))
-            with open(tmp.name, "w") as f:
+            with open(self.config_path, "w") as f:
                 yaml.safe_dump(self.config, f, default_flow_style=False, sort_keys=False)
-            shutil.move(tmp.name, self.config_path)
             return True
         except Exception as e:
             print(f"Error saving config: {e}")
