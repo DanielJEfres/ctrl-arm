@@ -1,15 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import './Visualizer.css'
 
-// declare electron api for typescript
-declare global {
-  interface Window {
-    electronAPI: {
-      showEMGVisualizer: () => Promise<void>
-      hideVisualizer: () => Promise<void>
-    }
-  }
-}
+// ElectronAPI is already declared elsewhere
 
 interface EMGData {
   timestamp: number
@@ -25,8 +17,6 @@ interface EMGData {
 }
 
 type GestureType = 'rest' | 'left_flex' | 'right_flex' | 'both_flex' | 'left_strong' | 'right_strong' | 'both_strong'
-
-type ConnectionStatus = 'connected' | 'disconnected' | 'connecting' | 'error'
 
 interface VisualizerProps {
   isVisible: boolean
@@ -232,8 +222,8 @@ function Visualizer({ isVisible, onClose }: VisualizerProps) {
   useEffect(() => {
     if (isVisible) {
       // use electron ipc to show system-level window
-      if (window.electronAPI) {
-        window.electronAPI.showEMGVisualizer()
+      if ((window as any).electronAPI?.showEMGVisualizer) {
+        (window as any).electronAPI.showEMGVisualizer()
         onClose() // close the react overlay since we're using electron window
         return
       }
@@ -254,7 +244,7 @@ function Visualizer({ isVisible, onClose }: VisualizerProps) {
 
   // if electron api is available, don't render react overlay
   // the electron window will handle the visualization
-  if (!isVisible || window.electronAPI) return null
+  if (!isVisible || (window as any).electronAPI?.showEMGVisualizer) return null
 
   // fallback react overlay for web mode
   return (
@@ -274,53 +264,65 @@ function Visualizer({ isVisible, onClose }: VisualizerProps) {
             />
           </div>
           
-          <div className="gesture-info">
-            <div className="gesture-display">
-              <span className="gesture-label">current gesture:</span>
-              <span className={`gesture-value ${currentGesture}`}>
-                {currentGesture.replace('_', ' ')}
-              </span>
-            </div>
-            
-            <div className="activity-bars">
-              <div className="activity-bar">
-                <span>left emg</span>
-                <div className="bar-container">
-                  <div 
-                    className="bar left-bar"
-                    style={{ 
-                      height: `${Math.min(Math.abs(emgData[emgData.length - 1]?.left_activity ?? 0) * 2, 100)}px`,
-                      backgroundColor: (emgData[emgData.length - 1]?.left_activity ?? 0) > 0 ? '#ff6b6b' : '#ff9999'
-                    }}
-                  />
-                </div>
-                <span className="bar-value">
-                  {Math.round(emgData[emgData.length - 1]?.left_activity ?? 0)}
+          <div className="info-panel">
+            <div className="current-status">
+              <div className="status-row">
+                <span className="status-label">Gesture:</span>
+                <span className={`status-value gesture-${currentGesture}`}>
+                  {currentGesture.replace('_', ' ').toUpperCase()}
                 </span>
               </div>
-              
-              <div className="activity-bar">
-                <span>right emg</span>
-                <div className="bar-container">
-                  <div 
-                    className="bar right-bar"
-                    style={{ 
-                      height: `${Math.min(Math.abs(emgData[emgData.length - 1]?.right_activity ?? 0) * 2, 100)}px`,
-                      backgroundColor: (emgData[emgData.length - 1]?.right_activity ?? 0) > 0 ? '#4ecdc4' : '#7dd3fc'
-                    }}
-                  />
-                </div>
-                <span className="bar-value">
-                  {Math.round(emgData[emgData.length - 1]?.right_activity ?? 0)}
+              <div className="status-row">
+                <span className="status-label">Left EMG:</span>
+                <span className="status-value">{Math.round(emgData[emgData.length - 1]?.left_activity ?? 0)}</span>
+              </div>
+              <div className="status-row">
+                <span className="status-label">Right EMG:</span>
+                <span className="status-value">{Math.round(emgData[emgData.length - 1]?.right_activity ?? 0)}</span>
+              </div>
+              <div className="status-row">
+                <span className="status-label">Connection:</span>
+                <span className={`status-value ${isConnected ? 'connected' : 'disconnected'}`}>
+                  {isConnected ? '● Connected' : '○ Disconnected'}
                 </span>
               </div>
             </div>
             
-            <div className="connection-status">
-              <span className={`status-indicator ${isConnected ? 'connected' : 'disconnected'}`}>
-                ●
-              </span>
-              <span className="status-text">{connectionStatus}</span>
+            <div className="control-guide">
+              <h3>EMG Control Mappings</h3>
+              <div className="control-list">
+                <div className="control-item">
+                  <span className="control-gesture">Light Flex Left</span>
+                  <span className="control-action">→ Left Click</span>
+                </div>
+                <div className="control-item">
+                  <span className="control-gesture">Light Flex Right</span>
+                  <span className="control-action">→ Right Click</span>
+                </div>
+                <div className="control-item">
+                  <span className="control-gesture">Both Light Flex</span>
+                  <span className="control-action">→ Double Click</span>
+                </div>
+                <div className="control-item">
+                  <span className="control-gesture">Strong Left</span>
+                  <span className="control-action">→ Scroll Up</span>
+                </div>
+                <div className="control-item">
+                  <span className="control-gesture">Strong Right</span>
+                  <span className="control-action">→ Scroll Down</span>
+                </div>
+                <div className="control-item">
+                  <span className="control-gesture">Both Strong</span>
+                  <span className="control-action">→ Middle Click</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="model-info">
+              <h3>ML Model Info</h3>
+              <p>Decision Tree Classifier</p>
+              <p>89.87% Accuracy</p>
+              <p>13 Features • 7 Classes</p>
             </div>
           </div>
         </div>

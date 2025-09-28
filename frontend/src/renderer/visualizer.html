@@ -208,6 +208,51 @@
       font-style: italic;
       margin-top: 4px;
     }
+    
+    /* EMG Control Guide Styles */
+    .control-guide-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+    }
+    
+    .control-mapping {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.2s ease;
+    }
+    
+    .control-mapping:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+    
+    .mapping-gesture {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 12px;
+      font-weight: 500;
+      flex: 1;
+    }
+    
+    .mapping-arrow {
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 12px;
+      margin: 0 8px;
+    }
+    
+    .mapping-action {
+      color: rgba(100, 200, 255, 0.9);
+      font-size: 12px;
+      font-weight: 600;
+      flex: 1;
+      text-align: right;
+    }
   </style>
 </head>
 <body>
@@ -221,11 +266,40 @@
     <div class="visualizer-content">
       <div class="visualizer-section">
         <div class="section-header">
-          <div class="section-title">Neural Network</div>
+          <div class="section-title">EMG Control Guide</div>
         </div>
         <div class="section-content">
-          <div class="placeholder-text">
-            Neural Network Visualization
+          <div class="control-guide-list">
+            <div class="control-mapping">
+              <span class="mapping-gesture">Light Flex Left</span>
+              <span class="mapping-arrow">→</span>
+              <span class="mapping-action">Left Click</span>
+            </div>
+            <div class="control-mapping">
+              <span class="mapping-gesture">Light Flex Right</span>
+              <span class="mapping-arrow">→</span>
+              <span class="mapping-action">Right Click</span>
+            </div>
+            <div class="control-mapping">
+              <span class="mapping-gesture">Both Light Flex</span>
+              <span class="mapping-arrow">→</span>
+              <span class="mapping-action">Double Click</span>
+            </div>
+            <div class="control-mapping">
+              <span class="mapping-gesture">Strong Left</span>
+              <span class="mapping-arrow">→</span>
+              <span class="mapping-action">Scroll Up</span>
+            </div>
+            <div class="control-mapping">
+              <span class="mapping-gesture">Strong Right</span>
+              <span class="mapping-arrow">→</span>
+              <span class="mapping-action">Scroll Down</span>
+            </div>
+            <div class="control-mapping">
+              <span class="mapping-gesture">Both Strong</span>
+              <span class="mapping-arrow">→</span>
+              <span class="mapping-action">Middle Click</span>
+            </div>
           </div>
         </div>
       </div>
