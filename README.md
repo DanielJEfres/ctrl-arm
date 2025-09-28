@@ -20,6 +20,8 @@ We built Ctrl-ARM using a multi-layered architecture combining hardware, AI, and
 - **MyoWare EMG sensors** - Capture muscle electrical activity from biceps
 - **Seeed Studio XIAO Sense board** - Microcontroller with built-in LSM6DS3 IMU
 - **200Hz sampling rate** - Real-time data collection for both EMG and IMU
+  <img width="1782" height="1186" alt="image" src="https://github.com/user-attachments/assets/e895beb8-9996-40f0-a773-8ad33e517751" />
+
 - **Serial communication** - USB connection at 115200 baud rate
 
 ### AI Layer
@@ -53,6 +55,10 @@ The system recognizes 12 different gestures that can be updated:
 | `left_hard` | High intensity left flex | Custom |
 | `right_hard` | High intensity right flex | Custom |
 
+<img width="1657" height="1486" alt="image" src="https://github.com/user-attachments/assets/fbe2502a-e2e1-4184-8c34-7b25011db13f" />
+<img width="2082" height="1186" alt="image" src="https://github.com/user-attachments/assets/328214a4-5d73-4dab-ac3a-ae43117027a4" />
+
+
 ## 🔧 Architecture
 
 ```
@@ -64,6 +70,8 @@ The system recognizes 12 different gestures that can be updated:
 │ • IMU/Gyro      │    │ • Voice AI      │    │ • Overlay       │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
+
+<img width="1811" height="1490" alt="image" src="https://github.com/user-attachments/assets/9d5c856e-c77c-4773-914d-8e61f1500a4b" />
 
 
 **Made with ❤️ for the future of human-computer interaction**
