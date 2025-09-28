@@ -10,6 +10,9 @@ from pathlib import Path
 import pickle
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.preprocessing import StandardScaler
+import json
+import websockets
+import asyncio
 
 pyautogui.FAILSAFE = True
 pyautogui.PAUSE = 0.001
@@ -58,6 +61,11 @@ class SmartEMGController:
         self.gesture_counts = {}
         self.threshold_count = 0
         self.ml_count = 0
+        
+        # WebSocket server for real-time visualization
+        self.websocket_server = None
+        self.connected_clients = set()
+        self.start_websocket_server()
 
     def load_model(self):
         # load existing model if available
@@ -153,6 +161,74 @@ class SmartEMGController:
         else:
             print("calibration failed - no data")
             return False
+
+    def start_websocket_server(self):
+        """Start WebSocket server for real-time data streaming"""
+        try:
+            async def handle_client(websocket, path):
+                """Handle new WebSocket client connections"""
+                self.connected_clients.add(websocket)
+                print("Visualizer connected")
+                try:
+                    await websocket.wait_closed()
+                finally:
+                    self.connected_clients.discard(websocket)
+                    print("Visualizer disconnected")
+            
+            # Start WebSocket server in a separate thread
+            def run_server():
+                # Create new event loop for this thread
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                
+                try:
+                    # Start the WebSocket server
+                    start_server = websockets.serve(handle_client, "localhost", 8765)
+                    loop.run_until_complete(start_server)
+                    print("WebSocket server started on ws://localhost:8765")
+                    loop.run_forever()
+                except Exception as e:
+                    print(f"WebSocket server error: {e}")
+                finally:
+                    loop.close()
+            
+            server_thread = threading.Thread(target=run_server, daemon=True)
+            server_thread.start()
+            
+        except Exception as e:
+            print(f"Failed to start WebSocket server: {e}")
+
+    def broadcast_data(self, data):
+        """Broadcast EMG data to all connected clients"""
+        if self.connected_clients:
+            message = json.dumps(data)
+            
+            # Create a task to send data to all clients
+            async def send_to_all():
+                disconnected = set()
+                for client in self.connected_clients:
+                    try:
+                        await client.send(message)
+                    except:
+                        disconnected.add(client)
+                # Remove disconnected clients
+                self.connected_clients -= disconnected
+            
+            # Try to get the event loop and schedule the task
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # If loop is running, create a task
+                    asyncio.create_task(send_to_all())
+                else:
+                    # If loop is not running, run until complete
+                    loop.run_until_complete(send_to_all())
+            except RuntimeError:
+                # No event loop in this thread, create a new one
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(send_to_all())
+                loop.close()
 
     def extract_features(self, emg1_window, emg2_window):
         # fast feature extraction for ml
@@ -300,6 +376,20 @@ class SmartEMGController:
                         # smart detection uses both threshold and ml
                         gesture = self.detect_gesture_smart(left_activity, right_activity, left_data, right_data)
                         self.gesture_history.append(gesture)
+
+                        # Broadcast real-time data to visualizer
+                        self.broadcast_data({
+                            'timestamp': time.time(),
+                            'emg1': emg1,
+                            'emg2': emg2,
+                            'left_activity': left_activity,
+                            'right_activity': right_activity,
+                            'gesture': gesture,
+                            'baseline_left': self.baseline_left,
+                            'baseline_right': self.baseline_right,
+                            'activation_threshold': self.activation_threshold,
+                            'strong_threshold': self.strong_threshold
+                        })
 
                         current_time = time.time()
                         if current_time - last_display_time > 0.15:
