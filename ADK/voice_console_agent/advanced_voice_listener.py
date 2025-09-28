@@ -6,6 +6,9 @@ import sys
 import os
 import requests
 import json
+import platform
+import subprocess
+import shlex
 
 # Import constants for key mappings
 try:
@@ -32,6 +35,78 @@ except Exception as e:
 
 _voice_status = "Waiting"
 _should_exit = False
+_typing_mode_pending = False
+
+def _spoken_to_text(s: str) -> str:
+    """Convert simple spoken punctuation/controls to characters."""
+    repl = {
+        "new line": "\n",
+        "newline": "\n",
+        "line break": "\n",
+        "tab": "\t",
+        "comma": ",",
+        "period": ".",
+        "full stop": ".",
+        "dot": ".",
+        "exclamation point": "!",
+        "exclamation mark": "!",
+        "question mark": "?",
+        "colon": ":",
+        "semicolon": ";",
+        "dash": "-",
+        "hyphen": "-",
+        "underscore": "_",
+        "slash": "/",
+        "back slash": "\\",
+        "backslash": "\\",
+        "open parenthesis": "(",
+        "close parenthesis": ")",
+        "open bracket": "[",
+        "close bracket": "]",
+        "open brace": "{",
+        "close brace": "}",
+        "quote": '"',
+        "double quote": '"',
+        "single quote": "'",
+    }
+    for phrase in sorted(repl.keys(), key=len, reverse=True):
+        s = s.replace(phrase, repl[phrase])
+    return s
+
+def _type_text(text: str) -> str:
+    """Type text into the active app using best available backend."""
+    try:
+        import pyautogui
+        pyautogui.FAILSAFE = False
+        parts = text.split("\n")
+        for i, part in enumerate(parts):
+            if part:
+                pyautogui.write(part)
+            if i < len(parts) - 1:
+                pyautogui.press("enter")
+        return "Typed text"
+    except Exception:
+        pass
+
+    if platform.system().lower() == "darwin":
+        try:
+            def esc(s):
+                return s.replace("\\", "\\\\").replace('"', '\\"')
+            lines = text.split("\n")
+            script_lines = ["tell application \"System Events\""]
+            for idx, line in enumerate(lines):
+                if line:
+                    script_lines.append(f"keystroke \"{esc(line)}\"")
+                if idx < len(lines) - 1:
+                    script_lines.append("key code 36")  # Return
+            script_lines.append("end tell")
+            script = "\n".join(script_lines)
+            subprocess.run(["osascript", "-e", script], check=True, capture_output=True)
+            return "Typed text"
+        except Exception as e:
+            return f"Typing failed: {e}"
+
+    return "Typing not supported on this platform"
 
 def send_voice_data(text: str, response: str = None):
     """Send voice data to the Electron app via HTTP"""
@@ -273,7 +348,7 @@ def process_gesture_command(command):
     return f"Voice command received: {command}"
 
 def execute_command(command):
-    global _should_exit
+    global _should_exit, _typing_mode_pending
     
     command = normalize_command(command)
     set_voice_status(f"Processing: {command}")
@@ -283,6 +358,31 @@ def execute_command(command):
     if "stop listening" in command or "exit" in command or "quit" in command:
         set_voice_status("Shutting down voice listener")
         _should_exit = True
+        return
+
+    if _typing_mode_pending:
+        to_type = _spoken_to_text(command)
+        result = _type_text(to_type)
+        _typing_mode_pending = False
+        set_voice_status(result)
+        send_voice_data(command, result)
+        time.sleep(0.5)
+        set_voice_status("Listening for 'Gemini'...")
+        return
+
+    if command.startswith("type "):
+        to_type = _spoken_to_text(command[len("type "):].strip())
+        result = _type_text(to_type)
+        set_voice_status(result)
+        send_voice_data(command, result)
+        time.sleep(0.5)
+        set_voice_status("Listening for 'Gemini'...")
+        return
+
+    if command in ("type", "start typing", "typing mode"):
+        _typing_mode_pending = True
+        set_voice_status("Typing mode: say what to type")
+        send_voice_data(command, "typing-mode-armed")
         return
     
     result = process_gesture_command(command)
