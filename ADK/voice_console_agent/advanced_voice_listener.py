@@ -119,47 +119,345 @@ def open_app(app_name: str) -> str:
     app = app_name.strip()
     if not app:
         return "No app specified"
-    if platform.system().lower() == "darwin":
+    
+    system = platform.system().lower()
+    
+    if system == "darwin":
+        # macOS
         try:
             subprocess.run(["open", "-a", app], check=True)
             return f"Opened {app}"
         except Exception:
             ok, msg = _mac_osascript(f'tell application "{app}" to activate')
             return f"Opened {app}" if ok else f"Failed to open {app}: {msg}"
-    return "Open app not supported on this platform"
+    
+    elif system == "windows":
+        # Windows
+        try:
+            # Try common app names and their executables
+            app_lower = app.lower()
+            
+            # Common Windows apps
+            win_apps = {
+                "chrome": "chrome",
+                "google chrome": "chrome",
+                "firefox": "firefox",
+                "edge": "msedge",
+                "microsoft edge": "msedge",
+                "notepad": "notepad",
+                "calculator": "calc",
+                "calc": "calc",
+                "explorer": "explorer",
+                "file explorer": "explorer",
+                "cmd": "cmd",
+                "command prompt": "cmd",
+                "powershell": "powershell",
+                "paint": "mspaint",
+                "word": "winword",
+                "microsoft word": "winword",
+                "excel": "excel",
+                "microsoft excel": "excel",
+                "outlook": "outlook",
+                "microsoft outlook": "outlook",
+                "teams": "ms-teams",
+                "microsoft teams": "ms-teams",
+                "discord": "discord",
+                "spotify": "spotify",
+                "steam": "steam",
+                "minecraft": "minecraft",
+                "xbox": "xbox",
+                "xbox app": "xbox",
+            }
+            
+            # Try to find the executable
+            exe = win_apps.get(app_lower, app)
+            
+            # First try to start it directly
+            try:
+                subprocess.Popen([exe], shell=True)
+                return f"Opened {app}"
+            except:
+                # Try with start command
+                subprocess.run(["cmd", "/c", "start", "", exe], shell=True, check=False)
+                return f"Opened {app}"
+        except Exception as e:
+            return f"Failed to open {app}: {e}"
+    
+    elif system == "linux":
+        # Linux
+        try:
+            # Try common Linux desktop launchers
+            launchers = ["xdg-open", "gnome-open", "kde-open"]
+            for launcher in launchers:
+                try:
+                    subprocess.run([launcher, app], check=True, capture_output=True)
+                    return f"Opened {app}"
+                except:
+                    continue
+            
+            # Try to run directly
+            subprocess.Popen([app], shell=True)
+            return f"Opened {app}"
+        except Exception as e:
+            return f"Failed to open {app}: {e}"
+    
+    return f"Platform {system} not supported"
 
 def close_app(app_name: str) -> str:
     app = app_name.strip()
     if not app:
         return "No app specified"
-    if platform.system().lower() == "darwin":
+    
+    system = platform.system().lower()
+    
+    if system == "darwin":
+        # macOS
         ok, msg = _mac_osascript(f'tell application "{app}" to quit')
         return f"Closed {app}" if ok else f"Failed to close {app}: {msg}"
-    return "Close app not supported on this platform"
+    
+    elif system == "windows":
+        # Windows
+        try:
+            app_lower = app.lower()
+            
+            # Map common app names to process names
+            process_map = {
+                "chrome": "chrome.exe",
+                "google chrome": "chrome.exe",
+                "firefox": "firefox.exe",
+                "edge": "msedge.exe",
+                "microsoft edge": "msedge.exe",
+                "notepad": "notepad.exe",
+                "calculator": "calculator.exe",
+                "calc": "calculator.exe",
+                "explorer": "explorer.exe",
+                "file explorer": "explorer.exe",
+                "cmd": "cmd.exe",
+                "command prompt": "cmd.exe",
+                "powershell": "powershell.exe",
+                "paint": "mspaint.exe",
+                "word": "winword.exe",
+                "microsoft word": "winword.exe",
+                "excel": "excel.exe",
+                "microsoft excel": "excel.exe",
+                "outlook": "outlook.exe",
+                "microsoft outlook": "outlook.exe",
+                "teams": "teams.exe",
+                "microsoft teams": "teams.exe",
+                "discord": "discord.exe",
+                "spotify": "spotify.exe",
+                "steam": "steam.exe",
+                "minecraft": "minecraft.exe",
+                "xbox": "gamingapp.exe",
+                "xbox app": "gamingapp.exe",
+            }
+            
+            process_name = process_map.get(app_lower, f"{app}.exe")
+            
+            # Use taskkill to close the app
+            result = subprocess.run(["taskkill", "/F", "/IM", process_name], 
+                                  capture_output=True, text=True)
+            
+            if result.returncode == 0:
+                return f"Closed {app}"
+            else:
+                # Try without .exe if it failed
+                if not process_name.endswith(".exe"):
+                    process_name += ".exe"
+                    result = subprocess.run(["taskkill", "/F", "/IM", process_name], 
+                                          capture_output=True, text=True)
+                    if result.returncode == 0:
+                        return f"Closed {app}"
+                
+                return f"Failed to close {app}: Process not found"
+        except Exception as e:
+            return f"Failed to close {app}: {e}"
+    
+    elif system == "linux":
+        # Linux
+        try:
+            # Try pkill first
+            result = subprocess.run(["pkill", "-f", app], capture_output=True)
+            if result.returncode == 0:
+                return f"Closed {app}"
+            
+            # Try killall
+            result = subprocess.run(["killall", app], capture_output=True)
+            if result.returncode == 0:
+                return f"Closed {app}"
+            
+            return f"Failed to close {app}: Process not found"
+        except Exception as e:
+            return f"Failed to close {app}: {e}"
+    
+    return f"Platform {system} not supported"
 
 def focus_app(app_name: str) -> str:
     app = app_name.strip()
     if not app:
         return "No app specified"
-    if platform.system().lower() == "darwin":
+    
+    system = platform.system().lower()
+    
+    if system == "darwin":
+        # macOS
         ok, msg = _mac_osascript(f'tell application "{app}" to activate')
         return f"Switched to {app}" if ok else f"Failed to switch to {app}: {msg}"
-    return "Switch not supported on this platform"
+    
+    elif system == "windows":
+        # Windows - use PowerShell to bring window to front
+        try:
+            # PowerShell script to find and activate window
+            ps_script = f'''
+            $app = "{app}"
+            $processes = Get-Process | Where-Object {{$_.MainWindowTitle -like "*$app*" -or $_.ProcessName -like "*$app*"}}
+            if ($processes) {{
+                $processes | ForEach-Object {{
+                    [Microsoft.VisualBasic.Interaction]::AppActivate($_.Id)
+                }}
+                "Success"
+            }} else {{
+                # Try to start the app if not running
+                Start-Process $app -ErrorAction SilentlyContinue
+                "Started"
+            }}
+            '''
+            
+            result = subprocess.run(["powershell", "-Command", ps_script], 
+                                  capture_output=True, text=True)
+            
+            if "Success" in result.stdout or "Started" in result.stdout:
+                return f"Switched to {app}"
+            else:
+                # Fallback: try to open the app
+                return open_app(app)
+        except Exception as e:
+            return f"Failed to switch to {app}: {e}"
+    
+    elif system == "linux":
+        # Linux - use wmctrl if available
+        try:
+            # Try wmctrl to switch to window
+            result = subprocess.run(["wmctrl", "-a", app], capture_output=True)
+            if result.returncode == 0:
+                return f"Switched to {app}"
+            
+            # Fallback: try to open the app
+            return open_app(app)
+        except:
+            # If wmctrl not available, try to open the app
+            return open_app(app)
+    
+    return f"Platform {system} not supported"
 
 def minimize_front_window() -> str:
-    if platform.system().lower() == "darwin":
+    system = platform.system().lower()
+    
+    if system == "darwin":
+        # macOS
         ok, msg = _mac_osascript('tell application "System Events" to keystroke "m" using {command down}')
         return "Minimized window" if ok else f"Minimize failed: {msg}"
-    return "Minimize not supported on this platform"
+    
+    elif system == "windows":
+        # Windows - use Win+Down to minimize
+        try:
+            import pyautogui
+            pyautogui.hotkey('win', 'down')
+            return "Minimized window"
+        except:
+            # Fallback: use PowerShell
+            try:
+                ps_script = '''
+                Add-Type @"
+                using System;
+                using System.Runtime.InteropServices;
+                public class Win32 {
+                    [DllImport("user32.dll")]
+                    public static extern IntPtr GetForegroundWindow();
+                    [DllImport("user32.dll")]
+                    public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+                }
+                "@
+                $hwnd = [Win32]::GetForegroundWindow()
+                [Win32]::ShowWindow($hwnd, 6)  # SW_MINIMIZE = 6
+                '''
+                subprocess.run(["powershell", "-Command", ps_script], check=True)
+                return "Minimized window"
+            except Exception as e:
+                return f"Minimize failed: {e}"
+    
+    elif system == "linux":
+        # Linux - use xdotool or wmctrl
+        try:
+            # Try xdotool
+            subprocess.run(["xdotool", "getactivewindow", "windowminimize"], check=True)
+            return "Minimized window"
+        except:
+            try:
+                # Try wmctrl
+                subprocess.run(["wmctrl", "-r", ":ACTIVE:", "-b", "add,hidden"], check=True)
+                return "Minimized window"
+            except:
+                return "Minimize requires xdotool or wmctrl"
+    
+    return f"Platform {system} not supported"
 
 def maximize_front_window() -> str:
-    if platform.system().lower() == "darwin":
+    system = platform.system().lower()
+    
+    if system == "darwin":
+        # macOS
         ok, msg = _mac_osascript('tell application "System Events" to keystroke "f" using {control down, command down}')
         return "Toggled full screen" if ok else f"Maximize failed: {msg}"
-    return "Maximize not supported on this platform"
+    
+    elif system == "windows":
+        # Windows - use Win+Up to maximize
+        try:
+            import pyautogui
+            pyautogui.hotkey('win', 'up')
+            return "Maximized window"
+        except:
+            # Fallback: use PowerShell
+            try:
+                ps_script = '''
+                Add-Type @"
+                using System;
+                using System.Runtime.InteropServices;
+                public class Win32 {
+                    [DllImport("user32.dll")]
+                    public static extern IntPtr GetForegroundWindow();
+                    [DllImport("user32.dll")]
+                    public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+                }
+                "@
+                $hwnd = [Win32]::GetForegroundWindow()
+                [Win32]::ShowWindow($hwnd, 3)  # SW_MAXIMIZE = 3
+                '''
+                subprocess.run(["powershell", "-Command", ps_script], check=True)
+                return "Maximized window"
+            except Exception as e:
+                return f"Maximize failed: {e}"
+    
+    elif system == "linux":
+        # Linux - use wmctrl or xdotool
+        try:
+            # Try wmctrl for maximize
+            subprocess.run(["wmctrl", "-r", ":ACTIVE:", "-b", "add,maximized_vert,maximized_horz"], check=True)
+            return "Maximized window"
+        except:
+            try:
+                # Try xdotool
+                subprocess.run(["xdotool", "key", "super+Up"], check=True)
+                return "Maximized window"
+            except:
+                return "Maximize requires wmctrl or xdotool"
+    
+    return f"Platform {system} not supported"
 
 def minimize_app_windows(app_name: str) -> str:
-    if platform.system().lower() == "darwin":
+    system = platform.system().lower()
+    
+    if system == "darwin":
         app = app_name.strip()
         if not app:
             return minimize_front_window()
@@ -179,7 +477,68 @@ def minimize_app_windows(app_name: str) -> str:
         )
         ok, msg = _mac_osascript(script)
         return "Minimized app windows" if ok and (msg == "ok" or msg == "") else f"Minimize failed: {msg}"
-    return "Minimize app not supported on this platform"
+    
+    elif system == "windows":
+        # Windows - minimize all windows of an app
+        app = app_name.strip()
+        if not app:
+            return minimize_front_window()
+        
+        try:
+            ps_script = f'''
+            Add-Type @"
+            using System;
+            using System.Runtime.InteropServices;
+            public class Win32 {{
+                [DllImport("user32.dll")]
+                public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+            }}
+            "@
+            
+            $app = "{app}"
+            $processes = Get-Process | Where-Object {{$_.MainWindowTitle -like "*$app*" -or $_.ProcessName -like "*$app*"}}
+            if ($processes) {{
+                $processes | ForEach-Object {{
+                    if ($_.MainWindowHandle -ne 0) {{
+                        [Win32]::ShowWindow($_.MainWindowHandle, 6)  # SW_MINIMIZE = 6
+                    }}
+                }}
+                "Success"
+            }} else {{
+                "No windows found"
+            }}
+            '''
+            
+            result = subprocess.run(["powershell", "-Command", ps_script], 
+                                  capture_output=True, text=True)
+            
+            if "Success" in result.stdout:
+                return f"Minimized {app} windows"
+            else:
+                return f"No {app} windows found"
+        except Exception as e:
+            return f"Failed to minimize {app}: {e}"
+    
+    elif system == "linux":
+        # Linux - minimize app windows using wmctrl
+        app = app_name.strip()
+        if not app:
+            return minimize_front_window()
+        
+        try:
+            # Get all windows for the app and minimize them
+            result = subprocess.run(["wmctrl", "-l"], capture_output=True, text=True)
+            if result.returncode == 0:
+                for line in result.stdout.splitlines():
+                    if app.lower() in line.lower():
+                        window_id = line.split()[0]
+                        subprocess.run(["wmctrl", "-i", "-r", window_id, "-b", "add,hidden"], check=False)
+                return f"Minimized {app} windows"
+            return f"No {app} windows found"
+        except:
+            return "Minimize app requires wmctrl"
+    
+    return f"Platform {system} not supported"
 
 def send_voice_data(text: str, response: str = None):
     """Send voice data to the Electron app via HTTP"""
