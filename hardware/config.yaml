@@ -4,7 +4,7 @@ serial:
   timeout: 1.0
 sampling_rate_hz: 200
 emg_sensors: 2
-active_profile: work_mode
+active_profile: default_mode
 gesture_labels:
 - rest
 - left_single
