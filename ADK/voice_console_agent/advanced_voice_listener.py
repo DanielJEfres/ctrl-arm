@@ -4,6 +4,8 @@ import speech_recognition as sr
 import time
 import sys
 import os
+import requests
+import json
 
 _ADK_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if _ADK_ROOT not in sys.path:
@@ -20,10 +22,71 @@ except Exception as e:
 _voice_status = "Waiting"
 _should_exit = False
 
+def send_voice_data(text: str, response: str = None):
+    """Send voice data to the Electron app via HTTP"""
+    try:
+        data = {
+            "text": text,
+            "response": response,
+            "timestamp": time.time(),
+            "status": "detected" if response is None else "response"
+        }
+        
+        response_obj = requests.post(
+            "http://localhost:3000/api/voice-data",
+            json=data,
+            timeout=2
+        )
+        
+        if response_obj.status_code == 200:
+            print(f"[advanced_voice_listener] Voice data sent successfully")
+        else:
+            print(f"[advanced_voice_listener] Failed to send voice data: {response_obj.status_code}")
+            
+    except Exception as e:
+        print(f"[advanced_voice_listener] Error sending voice data: {e}")
+
+def send_voice_status(status: str, message: str):
+    """Send voice status to the Electron app via HTTP"""
+    try:
+        data = {
+            "status": status,
+            "message": message,
+            "timestamp": time.time()
+        }
+        
+        response_obj = requests.post(
+            "http://localhost:3000/api/voice-status",
+            json=data,
+            timeout=2
+        )
+        
+        if response_obj.status_code == 200:
+            print(f"[advanced_voice_listener] Voice status sent successfully")
+        else:
+            print(f"[advanced_voice_listener] Failed to send voice status: {response_obj.status_code}")
+            
+    except Exception as e:
+        print(f"[advanced_voice_listener] Error sending voice status: {e}")
+
 def set_voice_status(status):
     global _voice_status
     _voice_status = status
     print(f"[Status] {status}")
+    
+    # Send status to visualizer
+    if "Listening" in status:
+        send_voice_status("listening", status)
+    elif "Processing" in status:
+        send_voice_status("processing", status)
+    elif "Wake word detected" in status:
+        send_voice_status("activated", status)
+    elif "Error" in status or "error" in status:
+        send_voice_status("error", status)
+    elif "stopped" in status.lower():
+        send_voice_status("stopped", status)
+    else:
+        send_voice_status("listening", status)
 
 def get_voice_status():
     return _voice_status
@@ -112,6 +175,9 @@ def execute_command(command):
     command = normalize_command(command)
     set_voice_status(f"Processing: {command}")
     
+    # Send detected text to visualizer
+    send_voice_data(command)
+    
     if "stop listening" in command or "exit" in command or "quit" in command:
         set_voice_status("Shutting down voice listener")
         _should_exit = True
@@ -119,6 +185,9 @@ def execute_command(command):
     
     result = process_gesture_command(command)
     set_voice_status(result)
+    
+    # Send response to visualizer
+    send_voice_data(command, result)
     
     time.sleep(1)
     set_voice_status("Listening for 'Gemini'...")
@@ -135,6 +204,9 @@ def listen_and_execute():
     
     print("[advanced_voice_listener] Ready! Say 'Gemini' followed by your command.")
     set_voice_status("Listening for 'Gemini'...")
+    
+    # Send initial status to visualizer
+    send_voice_status("listening", "Listening for 'Gemini'...")
     
     wake_word_detected = False
     

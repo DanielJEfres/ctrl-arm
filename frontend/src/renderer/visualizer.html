@@ -174,8 +174,7 @@
       gap: 12px;
     }
     
-    .voice-text-container,
-    .voice-response-container {
+    .voice-text-container {
       display: flex;
       flex-direction: column;
       gap: 6px;
@@ -189,8 +188,7 @@
       letter-spacing: 0.5px;
     }
     
-    .voice-text,
-    .voice-response {
+    .voice-text {
       color: rgba(255, 255, 255, 0.9);
       font-size: 13px;
       font-weight: 400;
@@ -248,10 +246,6 @@
               <div class="voice-label">Detected Text:</div>
               <div class="voice-text" id="voiceText">Say "Gemini" to activate...</div>
             </div>
-            <div class="voice-response-container">
-              <div class="voice-label">Response:</div>
-              <div class="voice-response" id="voiceResponse">Waiting for command...</div>
-            </div>
             <div class="voice-timestamp" id="voiceTimestamp"></div>
           </div>
         </div>
@@ -289,15 +283,10 @@
             
             function updateVoiceData(data) {
               const voiceText = document.getElementById('voiceText');
-              const voiceResponse = document.getElementById('voiceResponse');
               const voiceTimestamp = document.getElementById('voiceTimestamp');
               
-              if (data.status === 'detected') {
+              if (data.status === 'detected' || data.status === 'response') {
                 voiceText.textContent = data.text;
-                voiceTimestamp.textContent = new Date(data.timestamp * 1000).toLocaleTimeString();
-              } else if (data.status === 'response') {
-                voiceText.textContent = data.text;
-                voiceResponse.textContent = data.response;
                 voiceTimestamp.textContent = new Date(data.timestamp * 1000).toLocaleTimeString();
               }
               
