@@ -7,6 +7,17 @@ import os
 import requests
 import json
 
+# Import constants for key mappings
+try:
+    from constants import SHORTCUT_MAPPINGS, KEY_NORMALIZATIONS
+    print("[advanced_voice_listener] Constants loaded successfully")
+    print(f"[advanced_voice_listener] SHORTCUT_MAPPINGS has {len(SHORTCUT_MAPPINGS)} entries")
+    print(f"[advanced_voice_listener] KEY_NORMALIZATIONS has {len(KEY_NORMALIZATIONS)} entries")
+except ImportError:
+    print("[advanced_voice_listener] Could not import constants, using basic key mapping")
+    SHORTCUT_MAPPINGS = {}
+    KEY_NORMALIZATIONS = {}
+
 _ADK_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if _ADK_ROOT not in sys.path:
     sys.path.append(_ADK_ROOT)
@@ -115,6 +126,61 @@ def normalize_command(command):
     
     return command
 
+def process_key_combination(key_input):
+    """Process complex key combinations like 'control plus v' into 'ctrl+v'"""
+    key_input = key_input.lower().strip()
+    print(f"[advanced_voice_listener] Processing key combination: '{key_input}'")
+    
+    # First check if it's already a known shortcut
+    if key_input in SHORTCUT_MAPPINGS:
+        result = SHORTCUT_MAPPINGS[key_input]
+        print(f"[advanced_voice_listener] Found shortcut mapping: '{key_input}' -> '{result}'")
+        return result
+    
+    # Handle "plus" combinations like "control plus v"
+    if " plus " in key_input:
+        parts = key_input.split(" plus ")
+        if len(parts) == 2:
+            modifier = parts[0].strip()
+            key = parts[1].strip()
+            
+            print(f"[advanced_voice_listener] Plus combination: modifier='{modifier}', key='{key}'")
+            
+            # Normalize modifier - handle "control" specifically
+            if modifier == "control":
+                modifier = "ctrl"
+            else:
+                modifier = KEY_NORMALIZATIONS.get(modifier, modifier)
+            
+            # Normalize key
+            key = KEY_NORMALIZATIONS.get(key, key)
+            
+            result = f"{modifier}+{key}"
+            print(f"[advanced_voice_listener] Plus combination result: '{result}'")
+            return result
+    
+    # Handle "and" combinations like "control and c"
+    if " and " in key_input:
+        parts = key_input.split(" and ")
+        if len(parts) == 2:
+            modifier = parts[0].strip()
+            key = parts[1].strip()
+            
+            # Normalize modifier - handle "control" specifically
+            if modifier == "control":
+                modifier = "ctrl"
+            else:
+                modifier = KEY_NORMALIZATIONS.get(modifier, modifier)
+            
+            # Normalize key
+            key = KEY_NORMALIZATIONS.get(key, key)
+            
+            return f"{modifier}+{key}"
+    
+    # Handle single keys
+    normalized_key = KEY_NORMALIZATIONS.get(key_input, key_input)
+    return normalized_key
+
 def process_gesture_command(command):
     if not gesture_mapper:
         return f"Voice command received: {command} (gesture mapper not available)"
@@ -172,16 +238,26 @@ def process_gesture_command(command):
     }
     
     for phrase, gesture in gesture_phrases.items():
-        if f"change {phrase} to" in command or f"set {phrase} to" in command:
+        if f"change {phrase} to" in command or f"set {phrase} to" in command or f"change the {phrase} to" in command:
+            print(f"[advanced_voice_listener] Gesture change command detected for {phrase}")
             parts = command.split(" to ")
             if len(parts) > 1:
-                key = parts[1].strip().replace(" key", "").replace("key", "")
+                key_input = parts[1].strip().replace(" key", "").replace("key", "").lower()
+                
+                # Handle complex key combinations like "control plus v"
+                mapped_key = process_key_combination(key_input)
+                
+                print(f"[advanced_voice_listener] Mapping '{key_input}' to '{mapped_key}'")
+                
                 try:
-                    gesture_mapper.update_gesture_key(gesture, key)
+                    print(f"[advanced_voice_listener] About to update gesture '{gesture}' with key '{mapped_key}'")
+                    gesture_mapper.update_gesture_key(gesture, mapped_key)
                     gesture_mapper.save_config()
-                    return f"Changed {gesture} to {key}"
+                    print(f"[advanced_voice_listener] Successfully changed {gesture} to {mapped_key}")
+                    return f"Changed {gesture} to {mapped_key}"
                 except Exception as e:
-                    return f"Error changing {gesture} to {key}: {e}"
+                    print(f"[advanced_voice_listener] Error changing {gesture} to {mapped_key}: {e}")
+                    return f"Error changing {gesture} to {mapped_key}: {e}"
     
     if "current keys" in command or "show keys" in command:
         try:
