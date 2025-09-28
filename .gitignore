@@ -134,3 +134,6 @@ backend/ml/models/
 
 SETUP.md
 data/processed/
+
+# Output
+output/
