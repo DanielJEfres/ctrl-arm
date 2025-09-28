@@ -109,4 +109,8 @@ app_mode_mapping:
   Steam: game_mode
   Unity: game_mode
   Unreal: game_mode
+  Blender: creative_mode
+  Photoshop: creative_mode
+  Illustrator: creative_mode
+  Figma: creative_mode
 output_dir: data/raw

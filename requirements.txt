@@ -15,8 +15,8 @@ scikit-learn>=1.2.0
 scipy>=1.9.0
 
 # voice recognition
-SpeechRecognition>=3.8.0
-pyaudio>=0.2.11
+SpeechRecognition>=3.10.0
+pyaudio>=0.2.14
 pocketsphinx>=5.0.0
 
 # visualization
@@ -38,9 +38,7 @@ google-adk>=1.15.1
 openai-whisper>=2024.04.12
 sounddevice>=0.4.6
 python-dotenv>=1.0.1
-google-genai>=0.7.0
-SpeechRecognition>=3.10.0
-pyaudio>=0.2.14
+google-generativeai>=0.8.0
 
 # macOS
 pyobjc>=10.2 ; sys_platform == "darwin"
