@@ -1,5 +1,4 @@
 # Data and logs
-/data
 *.log
 *.logs
 
@@ -134,3 +133,4 @@ hardware/data/
 backend/ml/models/
 
 SETUP.md
+data/processed/
