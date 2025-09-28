@@ -9,6 +9,7 @@ import json
 import platform
 import subprocess
 import shlex
+import psutil  # Add psutil for process management
 
 # Import constants for key mappings
 try:
@@ -36,6 +37,10 @@ except Exception as e:
 _voice_status = "Waiting"
 _should_exit = False
 _typing_mode_pending = False
+
+# Track EMG control process
+_emg_process = None
+_emg_controller = None
 
 def _spoken_to_text(s: str) -> str:
     """Convert simple spoken punctuation/controls to characters."""
@@ -540,6 +545,89 @@ def minimize_app_windows(app_name: str) -> str:
     
     return f"Platform {system} not supported"
 
+def stop_emg_control() -> str:
+    """Stop the EMG control system"""
+    global _emg_process, _emg_controller
+    
+    try:
+        # First try to stop the controller if it's running in the same process
+        if _emg_controller:
+            try:
+                _emg_controller.is_running = False
+                _emg_controller = None
+                return "EMG control stopped - you can use your mouse now"
+            except Exception as e:
+                print(f"[advanced_voice_listener] Error stopping controller: {e}")
+        
+        # Also try to kill any Python processes running EMG control
+        for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+            try:
+                cmdline = proc.info.get('cmdline', [])
+                if cmdline and any('emg_control.py' in str(arg) or 'enhanced_emg_control.py' in str(arg) or 'launcher.py' in str(arg) for arg in cmdline):
+                    proc.terminate()
+                    try:
+                        proc.wait(timeout=3)
+                    except psutil.TimeoutExpired:
+                        proc.kill()
+                    return "EMG control stopped - you can use your mouse now"
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+        
+        # If we have a tracked subprocess, kill it
+        if _emg_process:
+            try:
+                _emg_process.terminate()
+                _emg_process.wait(timeout=3)
+            except:
+                try:
+                    _emg_process.kill()
+                except:
+                    pass
+            _emg_process = None
+            return "EMG control stopped - you can use your mouse now"
+        
+        return "No EMG control process found running"
+    except Exception as e:
+        return f"Error stopping EMG control: {e}"
+
+def start_emg_control(mode: str = "enhanced") -> str:
+    """Start the EMG control system"""
+    global _emg_process, _emg_controller
+    
+    # First check if it's already running
+    for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+        try:
+            cmdline = proc.info.get('cmdline', [])
+            if cmdline and any('emg_control.py' in str(arg) or 'enhanced_emg_control.py' in str(arg) for arg in cmdline):
+                return "EMG control is already running"
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+    
+    try:
+        # Find the backend/ml directory
+        backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'backend', 'ml'))
+        
+        if mode.lower() in ["enhanced", "imu", "cursor"]:
+            script_path = os.path.join(backend_dir, 'enhanced_emg_control.py')
+        else:
+            script_path = os.path.join(backend_dir, 'emg_control.py')
+        
+        if not os.path.exists(script_path):
+            return f"EMG control script not found at {script_path}"
+        
+        # Start the EMG control in a subprocess
+        _emg_process = subprocess.Popen(
+            [sys.executable, script_path],
+            cwd=backend_dir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        
+        return f"Started {mode} EMG control"
+    except Exception as e:
+        return f"Failed to start EMG control: {e}"
+
 def send_voice_data(text: str, response: str = None):
     """Send voice data to the Electron app via HTTP"""
     try:
@@ -823,6 +911,26 @@ def execute_command(command):
         set_voice_status(result)
         send_voice_data(command, result)
         return
+    # Handle EMG control commands
+    if "stop emg" in command or "stop control" in command or command == "stop":
+        result = stop_emg_control()
+        set_voice_status(result)
+        send_voice_data(command, result)
+        time.sleep(0.5)
+        set_voice_status("Listening for 'Gemini'...")
+        return
+    
+    if "start emg" in command or "start control" in command:
+        if "enhanced" in command or "imu" in command or "cursor" in command:
+            result = start_emg_control("enhanced")
+        else:
+            result = start_emg_control("basic")
+        set_voice_status(result)
+        send_voice_data(command, result)
+        time.sleep(0.5)
+        set_voice_status("Listening for 'Gemini'...")
+        return
+    
     if command.startswith("close "):
         app = command[len("close "):].strip()
         result = close_app(app)
