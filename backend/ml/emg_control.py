@@ -13,6 +13,7 @@ from sklearn.preprocessing import StandardScaler
 import json
 import websockets
 import asyncio
+import yaml
 
 pyautogui.FAILSAFE = True
 pyautogui.PAUSE = 0.001
@@ -66,6 +67,45 @@ class SmartEMGController:
         self.websocket_server = None
         self.connected_clients = set()
         self.start_websocket_server()
+        
+        self.gesture_config = self.load_gesture_config()
+
+    def load_gesture_config(self):
+        """Load gesture configuration from config.yaml"""
+        try:
+            config_path = Path(__file__).parent.parent.parent / "hardware" / "config.yaml"
+            if config_path.exists():
+                with open(config_path, 'r') as f:
+                    config = yaml.safe_load(f)
+                
+                # Get current mode keys
+                current_mode = config.get('active_profile', 'default_mode')
+                mode_keys = config.get('current_keys', {})
+                
+                print(f"Loaded gesture config for mode: {current_mode}")
+                return mode_keys
+            else:
+                print("Config file not found, using default gestures")
+                return self.get_default_gestures()
+        except Exception as e:
+            print(f"Error loading config: {e}, using default gestures")
+            return self.get_default_gestures()
+
+    def get_default_gestures(self):
+        """Default gesture mappings if config fails"""
+        return {
+            'left_single': 'tab',
+            'right_single': 'enter', 
+            'left_double': 'escape',
+            'right_double': 'space',
+            'left_hold': 'ctrl',
+            'right_hold': 'alt',
+            'both_flex': 'shift',
+            'left_then_right': 'f1',
+            'right_then_left': 'f2',
+            'left_hard': 'f3',
+            'right_hard': 'f4'
+        }
 
     def load_model(self):
         # load existing model if available
@@ -294,9 +334,9 @@ class SmartEMGController:
         self.threshold_count += 1
         
         if left_active and not right_active:
-            return 'left_strong' if left_strong else 'left_flex'
+            return 'left_hard' if left_strong else 'left_single'
         elif right_active and not left_active:
-            return 'right_strong' if right_strong else 'right_flex'
+            return 'right_hard' if right_strong else 'right_single'
         else:
             # shouldn't reach here but default to both_flex
             return 'both_flex'
@@ -305,27 +345,31 @@ class SmartEMGController:
         current_time = time.time()
         
         # use longer cooldown for scroll actions
-        cooldown = 0.5 if 'strong' in gesture else self.action_cooldown
+        cooldown = 0.5 if 'hard' in gesture else self.action_cooldown
         
         if current_time - self.last_action_time < cooldown:
             return
 
-        actions = {
-            'left_flex': ('left click', lambda: pyautogui.click()),
-            'right_flex': ('right click', lambda: pyautogui.click(button='right')),
-            'both_flex': ('double click', lambda: pyautogui.doubleClick()),
-            'left_strong': ('scroll up', lambda: pyautogui.scroll(2)),  # reduced scroll amount
-            'right_strong': ('scroll down', lambda: pyautogui.scroll(-2)),  # reduced scroll amount
-            'both_strong': ('middle click', lambda: pyautogui.click(button='middle'))
-        }
-
-        if gesture in actions:
-            name, action = actions[gesture]
-            print(f"\n>> {name}")
-            action()
-
+        key_mapping = self.gesture_config.get(gesture)
+        
+        if key_mapping and key_mapping != 'null':
+            print(f"\n>> {gesture}: {key_mapping}")
+            self.send_key(key_mapping)
             self.last_action_time = current_time
             self.gesture_counts[gesture] = self.gesture_counts.get(gesture, 0) + 1
+        else:
+            print(f"\n>> {gesture}: No action configured")
+
+    def send_key(self, key_combo):
+        """Send key combination based on config"""
+        try:
+            if '+' in key_combo:
+                keys = key_combo.split('+')
+                pyautogui.hotkey(*keys)
+            else:
+                pyautogui.press(key_combo)
+        except Exception as e:
+            print(f"Error sending key '{key_combo}': {e}")
 
     def read_serial_data(self):
         while self.is_running:
