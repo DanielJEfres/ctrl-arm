@@ -469,7 +469,21 @@
       }
       
       // Format the key for display
-      if (key.includes('+')) {
+      // Special formatting for mouse actions
+      const mouseActions = {
+        'click': 'Left Click',
+        'rightclick': 'Right Click',
+        'doubleclick': 'Double Click',
+        'middleclick': 'Middle Click',
+        'scrollup': 'Scroll Up',
+        'scrolldown': 'Scroll Down',
+        'drag': 'Drag',
+        'rightdrag': 'Right Drag'
+      };
+      
+      if (mouseActions[key.toLowerCase()]) {
+        return mouseActions[key.toLowerCase()];
+      } else if (key.includes('+')) {
         return key.toUpperCase();
       } else if (key.length === 1) {
         return key.toUpperCase();

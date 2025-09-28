@@ -78,11 +78,11 @@ class SmartEMGController:
             config_path = Path(__file__).parent.parent.parent / "hardware" / "config.yaml"
             if config_path.exists():
                 with open(config_path, 'r') as f:
-                    config = yaml.safe_load(f)
+                    self.full_config = yaml.safe_load(f)
                 
                 # Get current mode and its key mappings
-                current_mode = config.get('active_profile', 'default_mode')
-                gesture_keys = config.get('gesture_keys', {})
+                current_mode = self.full_config.get('active_profile', 'default_mode')
+                gesture_keys = self.full_config.get('gesture_keys', {})
                 mode_keys = gesture_keys.get(current_mode, {})
                 
                 if mode_keys:
@@ -95,10 +95,38 @@ class SmartEMGController:
                     return self.get_default_gestures()
             else:
                 print("Config file not found, using default gestures")
+                self.full_config = None
                 return self.get_default_gestures()
         except Exception as e:
             print(f"Error loading config: {e}, using default gestures")
+            self.full_config = None
             return self.get_default_gestures()
+    
+    def switch_to_mode(self, mode_name):
+        """Switch to a different control mode and update config file"""
+        if not self.full_config:
+            return False
+        
+        try:
+            gesture_keys = self.full_config.get('gesture_keys', {})
+            if mode_name in gesture_keys:
+                # Update active profile in config
+                self.full_config['active_profile'] = mode_name
+                
+                # Get the new mode's keys
+                mode_keys = gesture_keys.get(mode_name, {})
+                self.gesture_config = {k: v for k, v in mode_keys.items() if v and v != 'null'}
+                
+                # Save the updated config
+                config_path = Path(__file__).parent.parent.parent / "hardware" / "config.yaml"
+                with open(config_path, 'w') as f:
+                    yaml.safe_dump(self.full_config, f, default_flow_style=False, sort_keys=False)
+                
+                print(f"Switched to {mode_name} mode")
+                return True
+        except Exception as e:
+            print(f"Error switching mode: {e}")
+        return False
 
     def get_default_gestures(self):
         """Default gesture mappings if config fails"""
@@ -362,8 +390,26 @@ class SmartEMGController:
         key_mapping = self.gesture_config.get(gesture)
         
         if key_mapping and key_mapping != 'null' and key_mapping is not None:
-            print(f"\n>> {gesture}: {key_mapping}")
-            self.send_key(key_mapping)
+            # Check if it's a mouse action
+            mouse_actions = {
+                'click': lambda: pyautogui.click(),
+                'rightclick': lambda: pyautogui.click(button='right'),
+                'doubleclick': lambda: pyautogui.doubleClick(),
+                'middleclick': lambda: pyautogui.click(button='middle'),
+                'scrollup': lambda: pyautogui.scroll(2),
+                'scrolldown': lambda: pyautogui.scroll(-2),
+                'drag': lambda: pyautogui.mouseDown(),
+                'rightdrag': lambda: pyautogui.mouseDown(button='right')
+            }
+            
+            if key_mapping.lower() in mouse_actions:
+                print(f"\n>> {gesture}: {key_mapping}")
+                mouse_actions[key_mapping.lower()]()
+            else:
+                # It's a keyboard key
+                print(f"\n>> {gesture}: {key_mapping}")
+                self.send_key(key_mapping)
+            
             self.last_action_time = current_time
             self.gesture_counts[gesture] = self.gesture_counts.get(gesture, 0) + 1
         # Don't print anything for gestures with no action

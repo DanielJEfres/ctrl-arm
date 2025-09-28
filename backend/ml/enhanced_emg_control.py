@@ -11,9 +11,76 @@ import pickle
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.preprocessing import StandardScaler
 import math
+import ctypes
+from ctypes import wintypes
+import platform
+import psutil
+import yaml
 
 pyautogui.FAILSAFE = True
 pyautogui.PAUSE = 0.001
+
+# Windows-specific structures for raw input
+if platform.system() == 'Windows':
+    user32 = ctypes.windll.user32
+    
+    class MOUSEINPUT(ctypes.Structure):
+        _fields_ = [
+            ("dx", ctypes.c_long),
+            ("dy", ctypes.c_long),
+            ("mouseData", wintypes.DWORD),
+            ("dwFlags", wintypes.DWORD),
+            ("time", wintypes.DWORD),
+            ("dwExtraInfo", ctypes.POINTER(ctypes.c_ulong))
+        ]
+    
+    class KEYBDINPUT(ctypes.Structure):
+        _fields_ = [
+            ("wVk", wintypes.WORD),
+            ("wScan", wintypes.WORD),
+            ("dwFlags", wintypes.DWORD),
+            ("time", wintypes.DWORD),
+            ("dwExtraInfo", ctypes.POINTER(ctypes.c_ulong))
+        ]
+    
+    class INPUT(ctypes.Structure):
+        class _INPUT(ctypes.Union):
+            _fields_ = [
+                ("mi", MOUSEINPUT),
+                ("ki", KEYBDINPUT)
+            ]
+        _anonymous_ = ("_input",)
+        _fields_ = [
+            ("type", wintypes.DWORD),
+            ("_input", _INPUT)
+        ]
+    
+    MOUSEEVENTF_MOVE = 0x0001
+    MOUSEEVENTF_LEFTDOWN = 0x0002
+    MOUSEEVENTF_LEFTUP = 0x0004
+    MOUSEEVENTF_RIGHTDOWN = 0x0008
+    MOUSEEVENTF_RIGHTUP = 0x0010
+    MOUSEEVENTF_MIDDLEDOWN = 0x0020
+    MOUSEEVENTF_MIDDLEUP = 0x0040
+    MOUSEEVENTF_WHEEL = 0x0800
+    INPUT_MOUSE = 0
+    INPUT_KEYBOARD = 1
+    KEYEVENTF_KEYUP = 0x0002
+    KEYEVENTF_SCANCODE = 0x0008
+    
+    # Virtual key codes for common keys
+    VK_CODES = {
+        'a': 0x41, 'b': 0x42, 'c': 0x43, 'd': 0x44, 'e': 0x45, 'f': 0x46,
+        'g': 0x47, 'h': 0x48, 'i': 0x49, 'j': 0x4A, 'k': 0x4B, 'l': 0x4C,
+        'm': 0x4D, 'n': 0x4E, 'o': 0x4F, 'p': 0x50, 'q': 0x51, 'r': 0x52,
+        's': 0x53, 't': 0x54, 'u': 0x55, 'v': 0x56, 'w': 0x57, 'x': 0x58,
+        'y': 0x59, 'z': 0x5A,
+        '1': 0x31, '2': 0x32, '3': 0x33, '4': 0x34, '5': 0x35,
+        '6': 0x36, '7': 0x37, '8': 0x38, '9': 0x39, '0': 0x30,
+        'space': 0x20, 'enter': 0x0D, 'tab': 0x09, 'escape': 0x1B,
+        'shift': 0x10, 'ctrl': 0x11, 'alt': 0x12,
+        'f1': 0x70, 'f2': 0x71, 'f3': 0x72, 'f4': 0x73, 'f5': 0x74, 'f6': 0x75
+    }
 
 class EnhancedEMGController:
     def __init__(self):
@@ -98,6 +165,214 @@ class EnhancedEMGController:
         self.cursor_slowdown_factor = 0.1  # how much to slow cursor during click intent
         self.last_movement_time = time.time()
         self.click_intent_active = False
+        
+        # Game mode detection
+        self.game_mode = False
+        self.use_raw_input = platform.system() == 'Windows'
+        self.last_game_check = 0
+        self.game_check_interval = 5  # Check every 5 seconds
+        
+        # Load full config for mode switching
+        self.load_gesture_config()
+
+    def load_gesture_config(self):
+        """Load gesture configuration from config.yaml"""
+        try:
+            config_path = Path(__file__).parent.parent.parent / "hardware" / "config.yaml"
+            if config_path.exists():
+                with open(config_path, 'r') as f:
+                    self.full_config = yaml.safe_load(f)
+                    # Also load current gesture mappings
+                    current_mode = self.full_config.get('active_profile', 'default_mode')
+                    gesture_keys = self.full_config.get('gesture_keys', {})
+                    self.gesture_config = gesture_keys.get(current_mode, {})
+                    return self.full_config
+        except Exception as e:
+            print(f"Error loading config: {e}")
+        self.full_config = None
+        self.gesture_config = {}
+        return None
+    
+    def switch_to_mode(self, mode_name):
+        """Switch to a different control mode and update config file"""
+        if not self.full_config:
+            return False
+        
+        try:
+            # Check if already in this mode
+            if self.full_config.get('active_profile') == mode_name:
+                return True
+                
+            gesture_keys = self.full_config.get('gesture_keys', {})
+            if mode_name in gesture_keys:
+                # Update active profile in config
+                self.full_config['active_profile'] = mode_name
+                
+                # Update current gesture config
+                self.gesture_config = gesture_keys.get(mode_name, {})
+                
+                # Save the updated config
+                config_path = Path(__file__).parent.parent.parent / "hardware" / "config.yaml"
+                with open(config_path, 'w') as f:
+                    yaml.safe_dump(self.full_config, f, default_flow_style=False, sort_keys=False)
+                
+                print(f"Switched to {mode_name} mode")
+                return True
+        except Exception as e:
+            print(f"Error switching mode: {e}")
+        return False
+
+    def detect_game_mode(self):
+        """Check if a game is running that needs raw input and switch mode"""
+        if platform.system() != 'Windows':
+            return False
+        
+        try:
+            game_processes = ['minecraft', 'javaw', 'java', 'csgo', 'valorant', 'fortnite', 
+                            'overwatch', 'apex', 'pubg', 'cod', 'battlefield', 'gta', 
+                            'roblox', 'terraria', 'rust', 'ark']
+            
+            game_found = False
+            for proc in psutil.process_iter(['name']):
+                proc_name = proc.info['name'].lower()
+                if any(game in proc_name for game in game_processes):
+                    if not self.game_mode:  # Only print and switch if not already in game mode
+                        print(f"Game detected: {proc.info['name']} - switching to game mode")
+                        self.switch_to_mode('game_mode')  # Auto-switch to game mode
+                    game_found = True
+                    break
+            
+            # If no game found and we were in game mode, switch back to default
+            if not game_found and self.game_mode:
+                print("No game detected - switching to default mode")
+                self.switch_to_mode('default_mode')
+            
+            self.game_mode = game_found
+            return game_found
+        except Exception as e:
+            print(f"Error detecting game: {e}")
+            return False
+
+    def send_raw_mouse_input(self, dx, dy):
+        """Send raw mouse input that works with games on Windows"""
+        if platform.system() != 'Windows':
+            return False
+        
+        try:
+            # Create mouse input structure
+            mouse_input = INPUT()
+            mouse_input.type = INPUT_MOUSE
+            mouse_input.mi.dx = int(dx)
+            mouse_input.mi.dy = int(dy)
+            mouse_input.mi.dwFlags = MOUSEEVENTF_MOVE
+            mouse_input.mi.time = 0
+            mouse_input.mi.dwExtraInfo = None
+            
+            # Send the input
+            user32.SendInput(1, ctypes.byref(mouse_input), ctypes.sizeof(mouse_input))
+            return True
+        except Exception as e:
+            print(f"Raw input error: {e}")
+            return False
+
+    def send_raw_mouse_click(self, button='left', action='click'):
+        """Send raw mouse clicks that work with games"""
+        if platform.system() != 'Windows':
+            return False
+        
+        try:
+            mouse_input = INPUT()
+            mouse_input.type = INPUT_MOUSE
+            mouse_input.mi.dx = 0
+            mouse_input.mi.dy = 0
+            mouse_input.mi.time = 0
+            mouse_input.mi.dwExtraInfo = None
+            
+            if button == 'left':
+                if action in ['click', 'down']:
+                    mouse_input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN
+                    user32.SendInput(1, ctypes.byref(mouse_input), ctypes.sizeof(mouse_input))
+                if action in ['click', 'up']:
+                    mouse_input.mi.dwFlags = MOUSEEVENTF_LEFTUP
+                    user32.SendInput(1, ctypes.byref(mouse_input), ctypes.sizeof(mouse_input))
+            elif button == 'right':
+                if action in ['click', 'down']:
+                    mouse_input.mi.dwFlags = MOUSEEVENTF_RIGHTDOWN
+                    user32.SendInput(1, ctypes.byref(mouse_input), ctypes.sizeof(mouse_input))
+                if action in ['click', 'up']:
+                    mouse_input.mi.dwFlags = MOUSEEVENTF_RIGHTUP
+                    user32.SendInput(1, ctypes.byref(mouse_input), ctypes.sizeof(mouse_input))
+            elif button == 'middle':
+                if action in ['click', 'down']:
+                    mouse_input.mi.dwFlags = MOUSEEVENTF_MIDDLEDOWN
+                    user32.SendInput(1, ctypes.byref(mouse_input), ctypes.sizeof(mouse_input))
+                if action in ['click', 'up']:
+                    mouse_input.mi.dwFlags = MOUSEEVENTF_MIDDLEUP
+                    user32.SendInput(1, ctypes.byref(mouse_input), ctypes.sizeof(mouse_input))
+            
+            return True
+        except Exception as e:
+            print(f"Raw click error: {e}")
+            return False
+
+    def send_raw_mouse_scroll(self, amount):
+        """Send raw mouse scroll that works with games"""
+        if platform.system() != 'Windows':
+            return False
+        
+        try:
+            mouse_input = INPUT()
+            mouse_input.type = INPUT_MOUSE
+            mouse_input.mi.dx = 0
+            mouse_input.mi.dy = 0
+            mouse_input.mi.mouseData = int(amount * 120)  # 120 = one wheel click
+            mouse_input.mi.dwFlags = MOUSEEVENTF_WHEEL
+            mouse_input.mi.time = 0
+            mouse_input.mi.dwExtraInfo = None
+            
+            user32.SendInput(1, ctypes.byref(mouse_input), ctypes.sizeof(mouse_input))
+            return True
+        except Exception as e:
+            print(f"Raw scroll error: {e}")
+            return False
+
+    def send_raw_key(self, key, action='press'):
+        """Send raw keyboard input that works with games"""
+        if platform.system() != 'Windows':
+            return False
+        
+        try:
+            # Get virtual key code
+            vk_code = VK_CODES.get(key.lower(), None)
+            if vk_code is None:
+                # Try to get it from the character
+                if len(key) == 1:
+                    vk_code = ord(key.upper())
+                else:
+                    return False
+            
+            # Create keyboard input
+            kb_input = INPUT()
+            kb_input.type = INPUT_KEYBOARD
+            kb_input.ki.wVk = vk_code
+            kb_input.ki.wScan = 0
+            kb_input.ki.time = 0
+            kb_input.ki.dwExtraInfo = None
+            
+            if action in ['press', 'down']:
+                # Key down
+                kb_input.ki.dwFlags = 0
+                user32.SendInput(1, ctypes.byref(kb_input), ctypes.sizeof(kb_input))
+            
+            if action in ['press', 'up']:
+                # Key up
+                kb_input.ki.dwFlags = KEYEVENTF_KEYUP
+                user32.SendInput(1, ctypes.byref(kb_input), ctypes.sizeof(kb_input))
+            
+            return True
+        except Exception as e:
+            print(f"Raw key error: {e}")
+            return False
 
     def load_model(self):
         """Load the existing EMG decision tree model"""
@@ -470,6 +745,14 @@ class EnhancedEMGController:
         if current_time - self.last_cursor_time < self.cursor_update_interval:
             return
         
+        # Periodically check for games and reload config (not on every cursor update)
+        if current_time - self.last_game_check > self.game_check_interval:
+            # Reload config to catch manual changes
+            self.load_gesture_config()
+            # Then check for games
+            self.detect_game_mode()
+            self.last_game_check = current_time
+        
         # Calculate raw cursor movement
         raw_delta_x, raw_delta_y = self.calculate_cursor_movement(accel_x, accel_y, accel_z)
         
@@ -478,16 +761,25 @@ class EnhancedEMGController:
         
         # move cursor with very low threshold for responsiveness
         if abs(smooth_delta_x) > 0.001 or abs(smooth_delta_y) > 0.001:
-            try:
-                current_x, current_y = pyautogui.position()
-                # direct movement without extra scaling
-                move_x = smooth_delta_x
-                move_y = smooth_delta_y
-                new_x = max(0, min(pyautogui.size().width - 1, current_x + move_x))
-                new_y = max(0, min(pyautogui.size().height - 1, current_y + move_y))
-                pyautogui.moveTo(new_x, new_y, duration=0)  # instant movement
-            except:
-                pass  # ignore cursor movement errors
+            if self.game_mode and self.use_raw_input:
+                # Use raw input for games
+                if not self.send_raw_mouse_input(smooth_delta_x, smooth_delta_y):
+                    # Fallback to pyautogui if raw input fails
+                    try:
+                        pyautogui.moveRel(smooth_delta_x, smooth_delta_y, duration=0)
+                    except:
+                        pass
+            else:
+                # Use normal pyautogui for desktop
+                try:
+                    current_x, current_y = pyautogui.position()
+                    move_x = smooth_delta_x
+                    move_y = smooth_delta_y
+                    new_x = max(0, min(pyautogui.size().width - 1, current_x + move_x))
+                    new_y = max(0, min(pyautogui.size().height - 1, current_y + move_y))
+                    pyautogui.moveTo(new_x, new_y, duration=0)
+                except:
+                    pass
         
         self.last_cursor_time = current_time
 
@@ -501,22 +793,118 @@ class EnhancedEMGController:
         if current_time - self.last_action_time < cooldown:
             return
 
-        actions = {
-            'left_flex': ('left click', lambda: pyautogui.click()),
-            'right_flex': ('right click', lambda: pyautogui.click(button='right')),
-            'both_flex': ('double click', lambda: pyautogui.doubleClick()),
-            'left_strong': ('scroll up', lambda: pyautogui.scroll(2)),
-            'right_strong': ('scroll down', lambda: pyautogui.scroll(-2)),
-            'both_strong': ('middle click', lambda: pyautogui.click(button='middle'))
+        # Debug: Print current mode and config
+        print(f"[DEBUG] Game mode: {self.game_mode}, Config loaded: {bool(self.gesture_config)}")
+        if self.gesture_config:
+            print(f"[DEBUG] Current gesture config sample: {list(self.gesture_config.items())[:3]}")
+        
+        # First check config for any mode
+        gesture_mapping = {
+            'left_flex': 'left_single',
+            'right_flex': 'right_single', 
+            'both_flex': 'both_flex',
+            'left_strong': 'left_hard',
+            'right_strong': 'right_hard',
+            'both_strong': 'both_flex'
         }
+        
+        config_key = gesture_mapping.get(gesture, gesture)
+        config_action = self.gesture_config.get(config_key)
+        
+        # Define mouse actions
+        mouse_actions = {
+            'click': 'left',
+            'rightclick': 'right',
+            'doubleclick': 'double',
+            'middleclick': 'middle',
+            'scrollup': 'scrollup',
+            'scrolldown': 'scrolldown',
+            'drag': 'drag',
+            'rightdrag': 'rightdrag'
+        }
+        
+        # Check if config has an action
+        if config_action and config_action != 'null':
+            if config_action.lower() in mouse_actions:
+                # It's a mouse action - use raw input if in game mode
+                if self.game_mode and self.use_raw_input:
+                    action_type = mouse_actions[config_action.lower()]
+                    print(f"\n>> {gesture}: {config_action} (raw)")
+                    if action_type == 'left':
+                        self.send_raw_mouse_click('left')
+                    elif action_type == 'right':
+                        self.send_raw_mouse_click('right')
+                    elif action_type == 'double':
+                        self.send_raw_mouse_click('left')
+                        time.sleep(0.05)
+                        self.send_raw_mouse_click('left')
+                    elif action_type == 'middle':
+                        self.send_raw_mouse_click('middle')
+                    elif action_type == 'scrollup':
+                        self.send_raw_mouse_scroll(2)
+                    elif action_type == 'scrolldown':
+                        self.send_raw_mouse_scroll(-2)
+                else:
+                    # Normal mouse action
+                    print(f"\n>> {gesture}: {config_action}")
+                    if config_action.lower() == 'click':
+                        pyautogui.click()
+                    elif config_action.lower() == 'rightclick':
+                        pyautogui.click(button='right')
+                    elif config_action.lower() == 'doubleclick':
+                        pyautogui.doubleClick()
+                    elif config_action.lower() == 'middleclick':
+                        pyautogui.click(button='middle')
+                    elif config_action.lower() == 'scrollup':
+                        pyautogui.scroll(2)
+                    elif config_action.lower() == 'scrolldown':
+                        pyautogui.scroll(-2)
+                    elif config_action.lower() == 'drag':
+                        pyautogui.mouseDown()
+                    elif config_action.lower() == 'rightdrag':
+                        pyautogui.mouseDown(button='right')
+            else:
+                # It's a keyboard key - send it!
+                print(f"\n>> {gesture}: pressing '{config_action}'")
+                
+                # Use raw input if in game mode for better game compatibility
+                if self.game_mode and self.use_raw_input:
+                    if '+' in config_action:
+                        # For combos, still use pyautogui for now
+                        keys = config_action.split('+')
+                        pyautogui.hotkey(*keys)
+                    else:
+                        # Single key - use raw input
+                        if not self.send_raw_key(config_action):
+                            # Fallback to pyautogui
+                            pyautogui.press(config_action)
+                else:
+                    # Not in game mode - use normal pyautogui
+                    if '+' in config_action:
+                        # It's a key combo like ctrl+c
+                        keys = config_action.split('+')
+                        pyautogui.hotkey(*keys)
+                    else:
+                        # It's a single key like 'w'
+                        pyautogui.press(config_action)
+        else:
+            # No config or null - use default mouse actions
+            actions = {
+                'left_flex': ('left click', lambda: pyautogui.click()),
+                'right_flex': ('right click', lambda: pyautogui.click(button='right')),
+                'both_flex': ('double click', lambda: pyautogui.doubleClick()),
+                'left_strong': ('scroll up', lambda: pyautogui.scroll(2)),
+                'right_strong': ('scroll down', lambda: pyautogui.scroll(-2)),
+                'both_strong': ('middle click', lambda: pyautogui.click(button='middle'))
+            }
 
-        if gesture in actions:
-            name, action = actions[gesture]
-            print(f"\n>> {name}")
-            action()
+            if gesture in actions:
+                name, action = actions[gesture]
+                print(f"\n>> {name} (default)")
+                action()
 
-            self.last_action_time = current_time
-            self.gesture_counts[gesture] = self.gesture_counts.get(gesture, 0) + 1
+        self.last_action_time = current_time
+        self.gesture_counts[gesture] = self.gesture_counts.get(gesture, 0) + 1
 
     def read_serial_data(self):
         """Read data from serial port in separate thread"""
