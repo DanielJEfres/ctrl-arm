@@ -69,6 +69,8 @@ class SmartEMGController:
         self.start_websocket_server()
         
         self.gesture_config = self.load_gesture_config()
+        self.last_config_check = time.time()
+        self.config_check_interval = 5  # Check config every 5 seconds
 
     def load_gesture_config(self):
         """Load gesture configuration from config.yaml"""
@@ -78,12 +80,19 @@ class SmartEMGController:
                 with open(config_path, 'r') as f:
                     config = yaml.safe_load(f)
                 
-                # Get current mode keys
+                # Get current mode and its key mappings
                 current_mode = config.get('active_profile', 'default_mode')
-                mode_keys = config.get('current_keys', {})
+                gesture_keys = config.get('gesture_keys', {})
+                mode_keys = gesture_keys.get(current_mode, {})
                 
-                print(f"Loaded gesture config for mode: {current_mode}")
-                return mode_keys
+                if mode_keys:
+                    print(f"Loaded gesture config for mode: {current_mode}")
+                    # Filter out null values
+                    filtered_keys = {k: v for k, v in mode_keys.items() if v and v != 'null'}
+                    return filtered_keys
+                else:
+                    print(f"No keys found for mode: {current_mode}, using defaults")
+                    return self.get_default_gestures()
             else:
                 print("Config file not found, using default gestures")
                 return self.get_default_gestures()
@@ -352,13 +361,12 @@ class SmartEMGController:
 
         key_mapping = self.gesture_config.get(gesture)
         
-        if key_mapping and key_mapping != 'null':
+        if key_mapping and key_mapping != 'null' and key_mapping is not None:
             print(f"\n>> {gesture}: {key_mapping}")
             self.send_key(key_mapping)
             self.last_action_time = current_time
             self.gesture_counts[gesture] = self.gesture_counts.get(gesture, 0) + 1
-        else:
-            print(f"\n>> {gesture}: No action configured")
+        # Don't print anything for gestures with no action
 
     def send_key(self, key_combo):
         """Send key combination based on config"""
@@ -436,6 +444,15 @@ class SmartEMGController:
                         })
 
                         current_time = time.time()
+                        
+                        # Periodically reload config to pick up changes
+                        if current_time - self.last_config_check > self.config_check_interval:
+                            new_config = self.load_gesture_config()
+                            if new_config != self.gesture_config:
+                                self.gesture_config = new_config
+                                print("\n[Config reloaded]")
+                            self.last_config_check = current_time
+                        
                         if current_time - last_display_time > 0.15:
                             left_bar = "=" * min(10, int(left_activity / 10))
                             right_bar = "=" * min(10, int(right_activity / 10))
@@ -490,12 +507,16 @@ class SmartEMGController:
         print("\n" + "="*60)
         print("smart gesture controls")
         print("="*60)
-        print("  light flex left  -> left click")
-        print("  light flex right -> right click")
-        print("  both light flex  -> double click")
-        print("  strong left      -> scroll up")
-        print("  strong right     -> scroll down")
-        print("  both strong      -> middle click")
+        
+        # Show actual key mappings from config
+        if self.gesture_config:
+            print("Current key mappings:")
+            for gesture, key in self.gesture_config.items():
+                if key and key != 'null':
+                    print(f"  {gesture:15s} -> {key}")
+        else:
+            print("Using default mappings")
+        
         print("\nsystem:")
         if self.decision_tree:
             print("  * using decision tree for complex gestures")

@@ -371,9 +371,20 @@
       }
       
       console.log('Config loaded:', config);
+      console.log('Active profile:', config.active_profile);
+      console.log('Gesture keys:', config.gesture_keys);
       console.log('Gesture labels:', config.gesture_labels);
       
       let html = '';
+      
+      // Show active mode
+      const activeProfile = config.active_profile || 'default_mode';
+      html += `
+        <div style="text-align: center; margin-bottom: 16px; padding: 8px; background: rgba(255,255,255,0.1); border-radius: 6px;">
+          <div style="color: rgba(255,255,255,0.6); font-size: 11px; text-transform: uppercase; margin-bottom: 4px;">Active Mode</div>
+          <div style="color: rgba(255,255,255,0.9); font-size: 14px; font-weight: 600;">${activeProfile.replace('_', ' ').toUpperCase()}</div>
+        </div>
+      `;
       
       if (config.gesture_labels && config.gesture_labels.length > 0) {
         html += `
@@ -439,12 +450,21 @@
     }
     
     function getGestureAction(gesture, config) {
-      if (!config || !config.current_keys) {
+      if (!config) {
         return 'No Config';
       }
       
-      const key = config.current_keys[gesture];
-      if (!key) {
+      // Get the active profile/mode
+      const activeProfile = config.active_profile || 'default_mode';
+      
+      // Get the gesture keys for the active mode
+      const gestureKeys = config.gesture_keys;
+      if (!gestureKeys || !gestureKeys[activeProfile]) {
+        return 'No Config';
+      }
+      
+      const key = gestureKeys[activeProfile][gesture];
+      if (!key || key === null) {
         return 'Idle';
       }
       
