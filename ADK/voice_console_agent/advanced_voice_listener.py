@@ -108,6 +108,79 @@ def _type_text(text: str) -> str:
 
     return "Typing not supported on this platform"
 
+def _mac_osascript(script: str) -> tuple[bool, str]:
+    try:
+        out = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
+        return (out.returncode == 0, (out.stdout or out.stderr or "").strip())
+    except Exception as e:
+        return False, str(e)
+
+def open_app(app_name: str) -> str:
+    app = app_name.strip()
+    if not app:
+        return "No app specified"
+    if platform.system().lower() == "darwin":
+        try:
+            subprocess.run(["open", "-a", app], check=True)
+            return f"Opened {app}"
+        except Exception:
+            ok, msg = _mac_osascript(f'tell application "{app}" to activate')
+            return f"Opened {app}" if ok else f"Failed to open {app}: {msg}"
+    return "Open app not supported on this platform"
+
+def close_app(app_name: str) -> str:
+    app = app_name.strip()
+    if not app:
+        return "No app specified"
+    if platform.system().lower() == "darwin":
+        ok, msg = _mac_osascript(f'tell application "{app}" to quit')
+        return f"Closed {app}" if ok else f"Failed to close {app}: {msg}"
+    return "Close app not supported on this platform"
+
+def focus_app(app_name: str) -> str:
+    app = app_name.strip()
+    if not app:
+        return "No app specified"
+    if platform.system().lower() == "darwin":
+        ok, msg = _mac_osascript(f'tell application "{app}" to activate')
+        return f"Switched to {app}" if ok else f"Failed to switch to {app}: {msg}"
+    return "Switch not supported on this platform"
+
+def minimize_front_window() -> str:
+    if platform.system().lower() == "darwin":
+        ok, msg = _mac_osascript('tell application "System Events" to keystroke "m" using {command down}')
+        return "Minimized window" if ok else f"Minimize failed: {msg}"
+    return "Minimize not supported on this platform"
+
+def maximize_front_window() -> str:
+    if platform.system().lower() == "darwin":
+        ok, msg = _mac_osascript('tell application "System Events" to keystroke "f" using {control down, command down}')
+        return "Toggled full screen" if ok else f"Maximize failed: {msg}"
+    return "Maximize not supported on this platform"
+
+def minimize_app_windows(app_name: str) -> str:
+    if platform.system().lower() == "darwin":
+        app = app_name.strip()
+        if not app:
+            return minimize_front_window()
+        script = (
+            'tell application "System Events"\n'
+            f'  tell process "{app}"\n'
+            '    try\n'
+            '      repeat with w in windows\n'
+            '        set value of attribute "AXMinimized" of w to true\n'
+            '      end repeat\n'
+            '      return "ok"\n'
+            '    on error errMsg\n'
+            '      return errMsg\n'
+            '    end try\n'
+            '  end tell\n'
+            'end tell'
+        )
+        ok, msg = _mac_osascript(script)
+        return "Minimized app windows" if ok and (msg == "ok" or msg == "") else f"Minimize failed: {msg}"
+    return "Minimize app not supported on this platform"
+
 def send_voice_data(text: str, response: str = None):
     """Send voice data to the Electron app via HTTP"""
     try:
@@ -383,6 +456,45 @@ def execute_command(command):
         _typing_mode_pending = True
         set_voice_status("Typing mode: say what to type")
         send_voice_data(command, "typing-mode-armed")
+        return
+
+    if command.startswith("open "):
+        app = command[len("open "):].strip()
+        result = open_app(app)
+        set_voice_status(result)
+        send_voice_data(command, result)
+        return
+    if command.startswith("close "):
+        app = command[len("close "):].strip()
+        result = close_app(app)
+        set_voice_status(result)
+        send_voice_data(command, result)
+        return
+    if command.startswith("switch to ") or command.startswith("focus ") or command.startswith("activate "):
+        app = command.split(" ", 1)[1].strip()
+        result = focus_app(app)
+        set_voice_status(result)
+        send_voice_data(command, result)
+        return
+    if command.startswith("minimize "):
+        target = command[len("minimize "):].strip()
+        if target in ("window", "the window", "front window"):
+            result = minimize_front_window()
+        else:
+            focus_app(target)
+            result = minimize_app_windows(target)
+        set_voice_status(result)
+        send_voice_data(command, result)
+        return
+    if command.startswith("maximize "):
+        target = command[len("maximize "):].strip()
+        if target in ("window", "the window", "front window"):
+            result = maximize_front_window()
+        else:
+            focus_app(target)
+            result = maximize_front_window()
+        set_voice_status(result)
+        send_voice_data(command, result)
         return
     
     result = process_gesture_command(command)

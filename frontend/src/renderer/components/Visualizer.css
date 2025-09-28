@@ -1,4 +1,4 @@
-/* EMG Real-Time Visualizer Styles */
+/* emg real-time visualizer styles */
 
 .visualizer-overlay {
   position: fixed;
@@ -7,11 +7,15 @@
   width: 100vw;
   height: 100vh;
   background: rgba(0, 0, 0, 0.85);
-  z-index: 1000;
+  z-index: 999999;
   display: flex;
   align-items: center;
   justify-content: center;
   backdrop-filter: blur(5px);
+  /* windows 11 specific overlay properties */
+  -webkit-app-region: no-drag;
+  pointer-events: auto;
+  isolation: isolate;
 }
 
 .visualizer-container {
@@ -25,6 +29,12 @@
   box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.2);
   overflow: hidden;
+  /* ensure container stays on top */
+  position: relative;
+  z-index: 999999;
+  /* windows 11 compatibility */
+  will-change: transform;
+  transform: translateZ(0);
 }
 
 .visualizer-header {
@@ -268,7 +278,7 @@
   }
 }
 
-/* Responsive Design */
+/* responsive design */
 @media (max-width: 1200px) {
   .visualizer-container {
     width: 98%;
@@ -313,7 +323,7 @@
   }
 }
 
-/* Animation for smooth transitions */
+/* animation for smooth transitions */
 .visualizer-overlay {
   animation: fadeIn 0.3s ease-out;
 }
@@ -329,7 +339,7 @@
   }
 }
 
-/* Custom scrollbar for any scrollable content */
+/* custom scrollbar for scrollable content */
 ::-webkit-scrollbar {
   width: 8px;
 }
